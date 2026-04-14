@@ -523,19 +523,43 @@ class ArcadeData:
         except Exception as e:
             print(f"保存机厅数据失败: {e}")
 
-    def find_arcade_by_alias(self, name_or_alias: str) -> tuple[Optional[Dict[str, Any]], str]:
-        """查找机厅并返回匹配的别名（如果有的话）"""
+    def find_arcade_by_alias(self, name_or_alias: str, group_id: str = None) -> tuple[Optional[Dict[str, Any]], str]:
+        """查找机厅并返回匹配的别名（如果有的话），支持按群ID过滤"""
         for arcade in self.arcades:
             if isinstance(arcade, dict):  # 确保是字典
                 if arcade.get('name') == name_or_alias:
+                    # 如果指定了群ID，检查该群是否订阅了该机厅
+                    if group_id and int(group_id) not in arcade.get('group', []):
+                        continue
                     return arcade, arcade['name']
                 if name_or_alias in arcade.get('alias', []):
+                    # 如果指定了群ID，检查该群是否订阅了该机厅
+                    if group_id and int(group_id) not in arcade.get('group', []):
+                        continue
                     return arcade, name_or_alias
         return None, name_or_alias
 
-    def find_arcade(self, name_or_alias: str) -> Optional[Dict[str, Any]]:
-        arcade, _ = self.find_arcade_by_alias(name_or_alias)
+    def find_arcade(self, name_or_alias: str, group_id: str = None) -> Optional[Dict[str, Any]]:
+        arcade, _ = self.find_arcade_by_alias(name_or_alias, group_id)
         return arcade
+
+    def find_arcades_by_alias(self, alias: str) -> List[Dict[str, Any]]:
+        """查找所有使用该别名的机厅"""
+        result = []
+        for arcade in self.arcades:
+            if isinstance(arcade, dict):
+                if arcade.get('name') == alias or alias in arcade.get('alias', []):
+                    result.append(arcade)
+        return result
+
+    def find_arcades_by_alias_for_group(self, alias: str, group_id: str) -> List[Dict[str, Any]]:
+        """查找指定群订阅的所有使用该别名的机厅"""
+        result = []
+        for arcade in self.arcades:
+            if isinstance(arcade, dict):
+                if (arcade.get('name') == alias or alias in arcade.get('alias', [])) and int(group_id) in arcade.get('group', []):
+                    result.append(arcade)
+        return result
 
     def is_subscribed(self, group_id: str, arcade_name: str) -> bool:
         arcade = self.find_arcade(arcade_name)
@@ -724,10 +748,10 @@ LOCATION_QUERY_PATTERN = re.compile(r"^(.+?)(?<!\d)(在哪)$", re.IGNORECASE)
 
 matcher = on_message(priority=10, block=False)
 
-def _normalize_place(place: str) -> str:
+def _normalize_place(place: str, group_id: str = None) -> str:
     place = place.strip()
     # Try to find by name or alias
-    arcade = arcade_data.find_arcade(place)
+    arcade = arcade_data.find_arcade(place, group_id)
     if arcade:
         return arcade['name']
     return place
@@ -783,11 +807,22 @@ def _response_for_update(place: str, old_count: int, new_count: int, action: str
     return f"更新成功！{summary}\n{display_name}现在{_format_count_with_avg(new_count, arcade)}"
 
 
-def _query_place(place: str, original_input: str) -> Optional[str]:
-    place = _normalize_place(place)
-    arcade, matched_alias = arcade_data.find_arcade_by_alias(original_input)
+def _query_place(place: str, original_input: str, group_id: str) -> Optional[str]:
+    place = _normalize_place(place, group_id)
+    arcade, matched_alias = arcade_data.find_arcade_by_alias(original_input, group_id)
     if not arcade:
-        return None
+        # 如果找不到指定群的机厅，尝试查找所有使用该别名的机厅
+        matching_arcades = arcade_data.find_arcades_by_alias_for_group(original_input, group_id)
+        if not matching_arcades:
+            return None
+        elif len(matching_arcades) == 1:
+            # 如果只有一个匹配项，使用它
+            arcade = matching_arcades[0]
+            matched_alias = original_input
+        else:
+            # 如果有多个匹配项，提示用户具体选择
+            names = [arc['name'] for arc in matching_arcades]
+            return f"找到多个订阅的机厅使用别名 '{original_input}'：{'、'.join(names)}，请使用完整名称查询。"
     
     # 检查是否为当天更新（今天4点后算当天周期）
     time_str = arcade.get('time', '')
@@ -935,12 +970,22 @@ def _query_all(group_id: str) -> Optional[str]:
     
     return "\n".join(lines)
 
-def _query_history(place: str) -> Optional[str]:
+def _query_history(place: str, group_id: str) -> Optional[str]:
     """查询机厅历史记录"""
-    place = _normalize_place(place)  # 将别名转换为正式名称
-    arcade = arcade_data.find_arcade(place)
+    place = _normalize_place(place, group_id)  # 将别名转换为正式名称
+    arcade = arcade_data.find_arcade(place, group_id)
     if not arcade:
-        return
+        # 如果找不到指定群的机厅，尝试查找所有使用该别名的机厅
+        matching_arcades = arcade_data.find_arcades_by_alias_for_group(place, group_id)
+        if not matching_arcades:
+            return None
+        elif len(matching_arcades) == 1:
+            # 如果只有一个匹配项，使用它
+            arcade = matching_arcades[0]
+        else:
+            # 如果有多个匹配项，提示用户具体选择
+            names = [arc['name'] for arc in matching_arcades]
+            return f"找到多个订阅的机厅使用别名 '{place}'：{'、'.join(names)}，请使用完整名称查询历史记录。"
     
     records = history_data.get_records(place)  # 使用正式名称查询历史记录
     if not records:
@@ -969,13 +1014,23 @@ def _query_history(place: str) -> Optional[str]:
     
     return "\n".join(lines)
 
-def _query_location(place: str) -> Optional[str]:
+def _query_location(place: str, group_id: str) -> Optional[str]:
     """查询机厅地址信息"""
     original_place = place
-    place = _normalize_place(place)  # 将别名转换为正式名称
-    arcade = arcade_data.find_arcade(place)
+    place = _normalize_place(place, group_id)  # 将别名转换为正式名称
+    arcade = arcade_data.find_arcade(place, group_id)
     if not arcade:
-        return
+        # 如果找不到指定群的机厅，尝试查找所有使用该别名的机厅
+        matching_arcades = arcade_data.find_arcades_by_alias_for_group(original_place, group_id)
+        if not matching_arcades:
+            return None
+        elif len(matching_arcades) == 1:
+            # 如果只有一个匹配项，使用它
+            arcade = matching_arcades[0]
+        else:
+            # 如果有多个匹配项，提示用户具体选择
+            names = [arc['name'] for arc in matching_arcades]
+            return f"找到多个订阅的机厅使用别名 '{original_place}'：{'、'.join(names)}，请使用完整名称查询地址。"
     
     # 获取机厅地址信息
     address = arcade.get('address', '地址未知')
@@ -991,10 +1046,20 @@ def _query_location(place: str) -> Optional[str]:
     return location_info
 
 def _apply_delta(place: str, delta: int, user_name: str = "", action_type: str = "add", group_id: str = "") -> Optional[str]:
-    place = _normalize_place(place)
-    arcade = arcade_data.find_arcade(place)
+    place = _normalize_place(place, group_id)
+    arcade = arcade_data.find_arcade(place, group_id)
     if not arcade:
-        return None
+        # 如果找不到指定群的机厅，尝试查找所有使用该别名的机厅
+        matching_arcades = arcade_data.find_arcades_by_alias_for_group(place, group_id)
+        if not matching_arcades:
+            return None
+        elif len(matching_arcades) == 1:
+            # 如果只有一个匹配项，使用它
+            arcade = matching_arcades[0]
+        else:
+            # 如果有多个匹配项，提示用户具体选择
+            names = [arc['name'] for arc in matching_arcades]
+            return f"找到多个订阅的机厅使用别名 '{place}'：{'、'.join(names)}，请使用完整名称操作。"
     
     # 检查该机厅是否被当前群订阅
     if not arcade_data.is_subscribed(group_id, place):
@@ -1008,7 +1073,7 @@ def _apply_delta(place: str, delta: int, user_name: str = "", action_type: str =
     new_count = max(0, old_count + delta)
     # 检查是否卡数发生变化
     if old_count == new_count:
-        arcade = arcade_data.find_arcade(place)
+        arcade = arcade_data.find_arcade(place, group_id)
         display_name = arcade['name'] if arcade else place
         return f"卡数没有变化。\n{display_name}现在{_format_count_with_avg(new_count, arcade)}"
     
@@ -1033,10 +1098,20 @@ def _apply_delta(place: str, delta: int, user_name: str = "", action_type: str =
 def _set_single_count(place: str, count: int, user_name: str = "", group_id: str = "") -> Optional[str]:
     if count < 0:
         return None
-    place = _normalize_place(place)
-    arcade = arcade_data.find_arcade(place)
+    place = _normalize_place(place, group_id)
+    arcade = arcade_data.find_arcade(place, group_id)
     if not arcade:
-        return None
+        # 如果找不到指定群的机厅，尝试查找所有使用该别名的机厅
+        matching_arcades = arcade_data.find_arcades_by_alias_for_group(place, group_id)
+        if not matching_arcades:
+            return None
+        elif len(matching_arcades) == 1:
+            # 如果只有一个匹配项，使用它
+            arcade = matching_arcades[0]
+        else:
+            # 如果有多个匹配项，提示用户具体选择
+            names = [arc['name'] for arc in matching_arcades]
+            return f"找到多个订阅的机厅使用别名 '{place}'：{'、'.join(names)}，请使用完整名称操作。"
     
     # 检查该机厅是否被当前群订阅
     if not arcade_data.is_subscribed(group_id, place):
@@ -1051,7 +1126,7 @@ def _set_single_count(place: str, count: int, user_name: str = "", group_id: str
     
     # 检查是否卡数发生变化
     if old_count == count:
-        arcade = arcade_data.find_arcade(place)
+        arcade = arcade_data.find_arcade(place, group_id)
         display_name = arcade['name'] if arcade else place
         return f"卡数没有变化。\n{display_name}现在{_format_count_with_avg(count, arcade)}"
     
@@ -1427,7 +1502,7 @@ async def handle_query(bot: Bot, event: GroupMessageEvent) -> None:
     # 添加机厅地址查询功能
     if m := LOCATION_QUERY_PATTERN.fullmatch(text):
         place = m.group(1)
-        response = _query_location(place)
+        response = _query_location(place, group_id)
         if response:
             await matcher.finish(_reply_text(event, response))
         return
@@ -1491,14 +1566,14 @@ async def handle_query(bot: Bot, event: GroupMessageEvent) -> None:
 
     if m := QUERY_PATTERN.fullmatch(text):
         place = m.group(1)
-        response = _query_place(place, place)
+        response = _query_place(place, place, group_id)
         if response:
             await matcher.finish(_reply_text(event, response))
         return
 
     if m := HISTORY_PATTERN.fullmatch(text):
         place = m.group(1)
-        response = _query_history(place)
+        response = _query_history(place, group_id)
         if response:
             await matcher.finish(_reply_text(event, response))
         return
