@@ -7,20 +7,20 @@
 <p>
   <img src="https://raw.githubusercontent.com/lgc-NB2Dev/readme/main/template/plugin.svg" alt="NoneBotPluginText">
 </p>
+
+# NoneBot-Plugin-QueryPlace
+_✨ 机厅排卡插件 for NoneBot2 ✨_
+  
 <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="python">
 <a href="./LICENSE">
   <img src="https://img.shields.io/github/license/lgc2333/nonebot-plugin-picstatus.svg" alt="license">
 </a>
 <br />
 </div>
-# NoneBot-Plugin-QueryPlace
-
-
-_✨ 机厅排卡插件 for NoneBot2 ✨_
 
 ## 这是一个用于查询和管理机厅卡数的 NoneBot2 插件，主要用于舞萌DX和中二节奏等街机音乐游戏的机厅排队情况统计。
 
-### 安装方法（~~屎山代码，慎用。~~暂不支持nb install方式安装）
+### 安装方法（暂不支持nb install方式安装）~~屎山代码，慎用（（（~~
 
 1. 将插件文件放置在 NoneBot2 项目的插件目录中
 2. 在 `.env` 配置文件中添加以下配置项（可选）
