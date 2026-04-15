@@ -955,15 +955,15 @@ def _query_history(place: str) -> Optional[str]:
         new_count = record.get("new_count")
         
         if action == "increment":
-            lines.append(f"{time_str} {user} 增加了1卡。")
+            lines.append(f"{time_str} {user} 增加了1卡")
         elif action == "decrement":
-            lines.append(f"{time_str} {user} 减少了1卡。")
+            lines.append(f"{time_str} {user} 减少了1卡")
         elif action == "add":
             count = record.get("count", 0)
-            lines.append(f"{time_str} {user} 增加了{count}卡。")
+            lines.append(f"{time_str} {user} 增加了{count}卡")
         elif action == "subtract":
             count = record.get("count", 0)
-            lines.append(f"{time_str} {user} 减少了{count}卡。")
+            lines.append(f"{time_str} {user} 减少了{count}卡")
         elif action == "set":
             lines.append(f"{time_str} {user} 设置卡数为{new_count}")
     
