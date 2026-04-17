@@ -46,8 +46,16 @@ DECREMENT_PATTERN = r"^(.+?)(?<!\d)--$"
 HELP_PATTERN = r"^(help q|帮助排卡 | 排卡帮助|help 排卡|help queue)$"
 SET_EQUAL_PATTERN = r"^(.+?)=(\d+)$"
 SET_DIRECT_PATTERN = r"^(.+?)(?<!\d)(\d+)$"
-QUERY_PATTERN = r"^(.+?)(?<!\d)(几|j|jtj|多少人 | 有几人 | 有几卡 | 多少人 | 多少卡 | 几人 | 几卡|J|JTJ|jk|JK|几神 | 几爷 | 几爹)$"
-HISTORY_PATTERN = r"^(.+?)\有谁$"
+# 查询模式
+# 排序关键字以确保最长匹配优先
+_SINGLE_QUERY_KEYWORDS_ORDERED = [
+    "多少人", "有几人", "有几卡", "多少卡",
+    "几卡", "几神", "几爷", "几爹", "几人",
+    "jtj", "jk", "j", "几"
+]
+SINGLE_QUERY_PATTERN = rf"^(.+?)(?<!\d)({'|'.join(_SINGLE_QUERY_KEYWORDS_ORDERED)})$"
+HISTORY_LOCATION_PATTERN = r"^(.+?)(?<!\d)(有谁|在哪)$"
+ALL_QUERY_PATTERN = r"^(?:jtj|jk|j|几卡|几神|几爷|几爹|多少人|有几人|有几卡|多少卡|几人|几)$"
 ADD_ALIAS_PATTERN = r"^添加别名\s+(.+?)\s+(.+)$"
 DEL_ALIAS_PATTERN = r"^删除别名\s+(.+?)\s+(.+)$"
 FIND_ARCADE_PATTERN = r"^查找机厅\s+(.+)$"
@@ -56,8 +64,7 @@ SUBSCRIBE_REGEX_PATTERN = r"^订阅机厅[\s\u3000]*(.+)"
 UNSUBSCRIBE_REGEX_PATTERN = r"^取消订阅 (?:机厅)?[\s\u3000]*(.+)"
 ADD_ARCADE_PATTERN = r"^(添加机厅 | 新增机厅)\s+(.+)$"
 DELETE_ARCADE_PATTERN = r"^(删除机厅 | 移除机厅)\s+(.+)$"
-LOCATION_QUERY_PATTERN = r"^(.+?)(?<!\d)(在哪)$"
-ALL_QUERY_KEYWORDS = {"j", "jtj", "jk", "几卡", "几神", "几爷", "几爹", "多少人", "有几人", "有几卡", "多少人", "多少卡", "几人", "几"}
+
 
 
 def _reply_text(event: GroupMessageEvent, text: str) -> MessageSegment:
@@ -170,7 +177,7 @@ async def handle_list(bot: Bot, event: GroupMessageEvent) -> None:
 
 
 # 查询所有机厅命令
-all_query_matcher = on_command("", aliases=set(ALL_QUERY_KEYWORDS), priority=10, block=True)
+all_query_matcher = on_regex(ALL_QUERY_PATTERN, priority=5, block=True)
 
 @all_query_matcher.handle()
 async def handle_all_query(bot: Bot, event: GroupMessageEvent) -> None:
@@ -309,20 +316,39 @@ async def handle_find_arcade(bot: Bot, event: GroupMessageEvent) -> None:
         await find_arcade_matcher.finish(MessageSegment.reply(event.message_id) + MessageSegment.image(base64_img))
 
 
-# 查询机厅地址命令
-location_matcher = on_regex(LOCATION_QUERY_PATTERN, priority=10, block=True)
+# 查询单个机厅人数命令
+single_query_matcher = on_regex(SINGLE_QUERY_PATTERN, priority=10, block=True)
 
-@location_matcher.handle()
-async def handle_location(bot: Bot, event: GroupMessageEvent) -> None:
-    """处理查询机厅地址命令"""
+@single_query_matcher.handle()
+async def handle_single_query(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理查询单个机厅人数命令"""
     _check_and_reset_daily_data()
     text = str(event.get_message()).strip()
-    match = re.match(LOCATION_QUERY_PATTERN, text)
+    match = re.match(SINGLE_QUERY_PATTERN, text)
     if match:
-        place = match.group(1)
-        response = _query_location(place)
+        place, _ = match.groups()
+        response = _query_place(place, place)
         if response:
-            await location_matcher.finish(_reply_text(event, response))
+            await single_query_matcher.finish(_reply_text(event, response))
+
+
+# 查询历史记录和地址命令
+history_location_matcher = on_regex(HISTORY_LOCATION_PATTERN, priority=10, block=True)
+
+@history_location_matcher.handle()
+async def handle_history_location(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理查询历史记录和地址命令"""
+    _check_and_reset_daily_data()
+    text = str(event.get_message()).strip()
+    match = re.match(HISTORY_LOCATION_PATTERN, text)
+    if match:
+        place, query_type = match.groups()
+        if query_type == "有谁":
+            response = _query_history(place)
+        else:  # 在哪
+            response = _query_location(place)
+        if response:
+            await history_location_matcher.finish(_reply_text(event, response))
 
 
 # 减少指定数量命令
@@ -435,35 +461,3 @@ async def handle_set_direct(bot: Bot, event: GroupMessageEvent) -> None:
         response = _set_single_count(place, number, user_name, group_id)
         if response:
             await set_direct_matcher.finish(_reply_text(event, response))
-
-
-# 查询单个机厅命令
-query_matcher = on_regex(QUERY_PATTERN, priority=10, block=True)
-
-@query_matcher.handle()
-async def handle_query(bot: Bot, event: GroupMessageEvent) -> None:
-    """处理查询单个机厅命令"""
-    _check_and_reset_daily_data()
-    text = str(event.get_message()).strip()
-    match = re.match(QUERY_PATTERN, text)
-    if match:
-        place = match.group(1)
-        response = _query_place(place, place)
-        if response:
-            await query_matcher.finish(_reply_text(event, response))
-
-
-# 查询历史记录命令
-history_matcher = on_regex(HISTORY_PATTERN, priority=10, block=True)
-
-@history_matcher.handle()
-async def handle_history(bot: Bot, event: GroupMessageEvent) -> None:
-    """处理查询历史记录命令"""
-    _check_and_reset_daily_data()
-    text = str(event.get_message()).strip()
-    match = re.match(HISTORY_PATTERN, text)
-    if match:
-        place = match.group(1)
-        response = _query_history(place)
-        if response:
-            await history_matcher.finish(_reply_text(event, response))
