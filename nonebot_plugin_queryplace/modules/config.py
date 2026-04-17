@@ -45,7 +45,7 @@ LOCAL_ARCADE_FILE = BOT_DATA_DIR / "arcades-local.json"
 HISTORY_DATA_FILE = BOT_DATA_DIR / "history.json"
 
 # 字体配置
-PLUGIN_DIR = Path(__file__).parent
+PLUGIN_DIR = Path(__file__).parent.parent  # 指向插件根目录
 FONT_FILE = PLUGIN_DIR / "SourceHanSansSC-Bold.otf"
 
 

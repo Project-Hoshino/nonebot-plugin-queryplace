@@ -9,48 +9,37 @@ env/
 venv/
 .venv/
 .ENV
-.ENV.*
+.ENV.local
 .env
+.env.local
 .env.*
-.venv.bak/
-.python-version
-.mypy_cache/
-.pytest_cache/
-.coverage
-coverage/
 
 # Build artifacts
 build/
 dist/
 *.egg-info/
 
-# IDE
+# Testing
+.coverage
+coverage/
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 *.tmp
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Coverage
-htmlcov/
-.coverage*
-
-# Distribution / packaging
-.Python
-env/
-venv/
-.venv/
-.ENV
-.ENV.*
-.env
-.env.*
-.venv.bak/
-.python-version
+# Dependencies
+node_modules/
 ```
