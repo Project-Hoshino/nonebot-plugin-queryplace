@@ -52,7 +52,8 @@ ADD_ALIAS_PATTERN = re.compile(r"^添加别名\s+(.+?)\s+(.+)$")
 DEL_ALIAS_PATTERN = re.compile(r"^删除别名\s+(.+?)\s+(.+)$")
 FIND_ARCADE_PATTERN = re.compile(r"^查找机厅\s+(.+)$")
 VIEW_LIST_PATTERN = re.compile(r"^(机厅列表)$", re.IGNORECASE)
-SUBSCRIBE_REGEX_PATTERN = re.compile(r"^(订阅机厅 | 取消订阅机厅 | 取消订阅)\s+(.+)", re.IGNORECASE)
+SUBSCRIBE_REGEX_PATTERN = re.compile(r"^订阅机厅[\s\u3000]*(.+)", re.IGNORECASE)
+UNSUBSCRIBE_REGEX_PATTERN = re.compile(r"^取消订阅 (?:机厅)?[\s\u3000]*(.+)", re.IGNORECASE)
 ADD_ARCADE_PATTERN = re.compile(r"^(添加机厅 | 新增机厅)\s+(.+)$", re.IGNORECASE)
 DELETE_ARCADE_PATTERN = re.compile(r"^(删除机厅 | 移除机厅)\s+(.+)$", re.IGNORECASE)
 LOCATION_QUERY_PATTERN = re.compile(r"^(.+?)(?<!\d)(在哪)$", re.IGNORECASE)
@@ -254,15 +255,23 @@ async def handle_query(bot: Bot, event: GroupMessageEvent) -> None:
             await matcher.finish(_reply_text(event, response))
         return
 
-    # 订阅/取消订阅
+    # 订阅机厅
     if m := SUBSCRIBE_REGEX_PATTERN.fullmatch(text):
         if not _is_admin(event):
             await matcher.finish(_reply_text(event, "权限不足：仅群管理员可订阅机厅"))
             return
-        prefix = m.group(1)
-        arcade_name = m.group(2).strip()
-        is_subscribe = prefix in ['订阅机厅', '订阅']  # 支持多种订阅命令
-        response = _subscribe_regex(group_id, arcade_name, is_subscribe)
+        arcade_name = m.group(1).strip()
+        response = _subscribe_regex(group_id, arcade_name, True)
+        await matcher.finish(_reply_text(event, response))
+        return
+
+    # 取消订阅机厅
+    if m := UNSUBSCRIBE_REGEX_PATTERN.fullmatch(text):
+        if not _is_admin(event):
+            await matcher.finish(_reply_text(event, "权限不足：仅群管理员可取消订阅机厅"))
+            return
+        arcade_name = m.group(1).strip()
+        response = _subscribe_regex(group_id, arcade_name, False)
         await matcher.finish(_reply_text(event, response))
         return
 
