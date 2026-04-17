@@ -43,7 +43,7 @@ SUBTRACT_PATTERN = r"^(.+?)(?<!\d)-(\d+)$"
 ADD_PATTERN = r"^(.+?)(?<!\d)\+(\d+)$"
 INCREMENT_PATTERN = r"^(.+?)(?<!\d)\+\+$"
 DECREMENT_PATTERN = r"^(.+?)(?<!\d)--$"
-HELP_PATTERN = r"^(help q|帮助排卡 | 排卡帮助|help 排卡|help queue)$"
+HELP_PATTERN = r"^(help q|帮助排卡|排卡帮助|help 排卡|help queue)$"
 SET_EQUAL_PATTERN = r"^(.+?)=(\d+)$"
 SET_DIRECT_PATTERN = r"^(.+?)(?<!\d)(\d+)$"
 # 查询模式
