@@ -61,7 +61,7 @@ DEL_ALIAS_PATTERN = r"^删除别名\s+(.+?)\s+(.+)$"
 FIND_ARCADE_PATTERN = r"^查找机厅\s+(.+)$"
 VIEW_LIST_PATTERN = r"^(机厅列表)$"
 SUBSCRIBE_REGEX_PATTERN = r"^订阅机厅[\s\u3000]*(.+)"
-UNSUBSCRIBE_REGEX_PATTERN = r"^取消订阅 (?:机厅)?[\s\u3000]*(.+)"
+UNSUBSCRIBE_REGEX_PATTERN = r"^取消订阅(?:机厅)?[\s\u3000]*(.+)"
 ADD_ARCADE_PATTERN = r"^(添加机厅 | 新增机厅)\s+(.+)$"
 DELETE_ARCADE_PATTERN = r"^(删除机厅 | 移除机厅)\s+(.+)$"
 
