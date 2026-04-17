@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import re
-from nonebot import on_message, get_driver, require
+from nonebot import on_command, on_regex, get_driver, require
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, MessageSegment
 from nonebot_plugin_apscheduler import scheduler
 
@@ -39,26 +39,25 @@ from .service import (
 
 
 # 正则表达式模式
-SUBTRACT_PATTERN = re.compile(r"^(.+?)(?<!\d)-(\d+)$")
-ADD_PATTERN = re.compile(r"^(.+?)(?<!\d)\+(\d+)$")
-INCREMENT_PATTERN = re.compile(r"^(.+?)(?<!\d)\+\+$")
-DECREMENT_PATTERN = re.compile(r"^(.+?)(?<!\d)--$")
-HELP_PATTERN = re.compile(r"^(help q|帮助排卡 | 排卡帮助|help 排卡|help queue)$", re.IGNORECASE)
-SET_EQUAL_PATTERN = re.compile(r"^(.+?)=(\d+)$")
-SET_DIRECT_PATTERN = re.compile(r"^(.+?)(?<!\d)(\d+)$")
-QUERY_PATTERN = re.compile(r"^(.+?)(?<!\d)(几|j|jtj|多少人 | 有几人 | 有几卡 | 多少人 | 多少卡 | 几人 | 几卡|J|JTJ|jk|JK|几神 | 几爷 | 几爹)$", re.IGNORECASE)
-HISTORY_PATTERN = re.compile(r"^(.+?)\有谁$", re.IGNORECASE)
-ADD_ALIAS_PATTERN = re.compile(r"^添加别名\s+(.+?)\s+(.+)$")
-DEL_ALIAS_PATTERN = re.compile(r"^删除别名\s+(.+?)\s+(.+)$")
-FIND_ARCADE_PATTERN = re.compile(r"^查找机厅\s+(.+)$")
-VIEW_LIST_PATTERN = re.compile(r"^(机厅列表)$", re.IGNORECASE)
-SUBSCRIBE_REGEX_PATTERN = re.compile(r"^订阅机厅[\s\u3000]*(.+)", re.IGNORECASE)
-UNSUBSCRIBE_REGEX_PATTERN = re.compile(r"^取消订阅 (?:机厅)?[\s\u3000]*(.+)", re.IGNORECASE)
-ADD_ARCADE_PATTERN = re.compile(r"^(添加机厅 | 新增机厅)\s+(.+)$", re.IGNORECASE)
-DELETE_ARCADE_PATTERN = re.compile(r"^(删除机厅 | 移除机厅)\s+(.+)$", re.IGNORECASE)
-LOCATION_QUERY_PATTERN = re.compile(r"^(.+?)(?<!\d)(在哪)$", re.IGNORECASE)
-
-matcher = on_message(priority=10, block=False)
+SUBTRACT_PATTERN = r"^(.+?)(?<!\d)-(\d+)$"
+ADD_PATTERN = r"^(.+?)(?<!\d)\+(\d+)$"
+INCREMENT_PATTERN = r"^(.+?)(?<!\d)\+\+$"
+DECREMENT_PATTERN = r"^(.+?)(?<!\d)--$"
+HELP_PATTERN = r"^(help q|帮助排卡 | 排卡帮助|help 排卡|help queue)$"
+SET_EQUAL_PATTERN = r"^(.+?)=(\d+)$"
+SET_DIRECT_PATTERN = r"^(.+?)(?<!\d)(\d+)$"
+QUERY_PATTERN = r"^(.+?)(?<!\d)(几|j|jtj|多少人 | 有几人 | 有几卡 | 多少人 | 多少卡 | 几人 | 几卡|J|JTJ|jk|JK|几神 | 几爷 | 几爹)$"
+HISTORY_PATTERN = r"^(.+?)\有谁$"
+ADD_ALIAS_PATTERN = r"^添加别名\s+(.+?)\s+(.+)$"
+DEL_ALIAS_PATTERN = r"^删除别名\s+(.+?)\s+(.+)$"
+FIND_ARCADE_PATTERN = r"^查找机厅\s+(.+)$"
+VIEW_LIST_PATTERN = r"^(机厅列表)$"
+SUBSCRIBE_REGEX_PATTERN = r"^订阅机厅[\s\u3000]*(.+)"
+UNSUBSCRIBE_REGEX_PATTERN = r"^取消订阅 (?:机厅)?[\s\u3000]*(.+)"
+ADD_ARCADE_PATTERN = r"^(添加机厅 | 新增机厅)\s+(.+)$"
+DELETE_ARCADE_PATTERN = r"^(删除机厅 | 移除机厅)\s+(.+)$"
+LOCATION_QUERY_PATTERN = r"^(.+?)(?<!\d)(在哪)$"
+ALL_QUERY_KEYWORDS = {"j", "jtj", "jk", "几卡", "几神", "几爷", "几爹", "多少人", "有几人", "有几卡", "多少人", "多少卡", "几人", "几"}
 
 
 def _reply_text(event: GroupMessageEvent, text: str) -> MessageSegment:
@@ -145,181 +144,326 @@ async def reset_daily_data():
     print("每日数据重置完成")
 
 
-@matcher.handle()
-async def handle_query(bot: Bot, event: GroupMessageEvent) -> None:
-    """处理消息"""
-    text = str(event.get_message()).strip()
-    if not text:
-        return
+# 帮助命令
+help_matcher = on_command("help q", aliases={"帮助排卡", "排卡帮助", "help 排卡", "help queue"}, priority=10, block=True)
 
-    # 检查是否需要重置每日数据
+@help_matcher.handle()
+async def handle_help(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理帮助命令"""
     _check_and_reset_daily_data()
+    help_text = _help_text()
+    img = text_to_image(help_text)
+    base64_img = image_to_base64(img)
+    await help_matcher.finish(MessageSegment.reply(event.message_id) + MessageSegment.image(base64_img))
 
+
+# 机厅列表命令
+list_matcher = on_command("机厅列表", priority=10, block=True)
+
+@list_matcher.handle()
+async def handle_list(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理机厅列表命令"""
+    _check_and_reset_daily_data()
     group_id = str(event.group_id)
-    user_name = event.sender.nickname or str(event.user_id)
+    list_text = _format_arcade_list(group_id)
+    await list_matcher.finish(_reply_text(event, list_text))
 
-    # 帮助命令
-    if HELP_PATTERN.fullmatch(text):
-        help_text = _help_text()
-        img = text_to_image(help_text)
-        base64_img = image_to_base64(img)
-        await matcher.finish(MessageSegment.reply(event.message_id) + MessageSegment.image(base64_img))
+
+# 查询所有机厅命令
+all_query_matcher = on_command("", aliases=set(ALL_QUERY_KEYWORDS), priority=10, block=True)
+
+@all_query_matcher.handle()
+async def handle_all_query(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理查询所有机厅命令"""
+    _check_and_reset_daily_data()
+    group_id = str(event.group_id)
+    response = _query_all(group_id)
+    if response:
+        await all_query_matcher.finish(_reply_text(event, response))
+
+
+# 订阅机厅命令
+subscribe_matcher = on_regex(SUBSCRIBE_REGEX_PATTERN, priority=10, block=True)
+
+@subscribe_matcher.handle()
+async def handle_subscribe(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理订阅机厅命令"""
+    _check_and_reset_daily_data()
+    if not _is_admin(event):
+        await subscribe_matcher.finish(_reply_text(event, "权限不足：仅群管理员可订阅机厅"))
         return
-
-    # 机厅列表
-    if VIEW_LIST_PATTERN.fullmatch(text):
-        list_text = _format_arcade_list(group_id)
-        await matcher.finish(_reply_text(event, list_text))
-        return
-
-    # 查询所有机厅
-    if text.lower() in {"j", "jtj", "jk", "几卡", "几神", "几爷", "几爹", "多少人", "有几人", "有几卡", "多少人", "多少卡", "几人", "几"}:
-        response = _query_all(group_id)
-        if response:
-            await matcher.finish(_reply_text(event, response))
-        return
-
-    # 查询机厅地址
-    if m := LOCATION_QUERY_PATTERN.fullmatch(text):
-        place = m.group(1)
-        response = _query_location(place)
-        if response:
-            await matcher.finish(_reply_text(event, response))
-        return
-
-    # 减少指定数量
-    if m := SUBTRACT_PATTERN.fullmatch(text):
-        place, number_text = m.groups()
-        number = int(number_text)
-        response = _apply_delta(place, -number, user_name, "subtract", group_id)
-        if response:
-            await matcher.finish(_reply_text(event, response))
-        return
-
-    # 增加指定数量
-    if m := ADD_PATTERN.fullmatch(text):
-        place, number_text = m.groups()
-        number = int(number_text)
-        response = _apply_delta(place, number, user_name, "add", group_id)
-        if response:
-            await matcher.finish(_reply_text(event, response))
-        return
-
-    # 增加 1
-    if m := INCREMENT_PATTERN.fullmatch(text):
-        place = m.group(1)
-        response = _apply_delta(place, 1, user_name, "increment", group_id)
-        if response:
-            await matcher.finish(_reply_text(event, response))
-        return
-
-    # 减少 1
-    if m := DECREMENT_PATTERN.fullmatch(text):
-        place = m.group(1)
-        response = _apply_delta(place, -1, user_name, "decrement", group_id)
-        if response:
-            await matcher.finish(_reply_text(event, response))
-        return
-
-    # 设置为指定值 (=)
-    if m := SET_EQUAL_PATTERN.fullmatch(text):
-        place, number_text = m.groups()
-        number = int(number_text)
-        response = _set_single_count(place, number, user_name, group_id)
-        if response:
-            await matcher.finish(_reply_text(event, response))
-        return
-
-    # 设置为指定值 (直接数字)
-    if m := SET_DIRECT_PATTERN.fullmatch(text):
-        place, number_text = m.groups()
-        number = int(number_text)
-        response = _set_single_count(place, number, user_name, group_id)
-        if response:
-            await matcher.finish(_reply_text(event, response))
-        return
-
-    # 查询单个机厅
-    if m := QUERY_PATTERN.fullmatch(text):
-        place = m.group(1)
-        response = _query_place(place, place)
-        if response:
-            await matcher.finish(_reply_text(event, response))
-        return
-
-    # 查询历史记录
-    if m := HISTORY_PATTERN.fullmatch(text):
-        place = m.group(1)
-        response = _query_history(place)
-        if response:
-            await matcher.finish(_reply_text(event, response))
-        return
-
-    # 订阅机厅
-    if m := SUBSCRIBE_REGEX_PATTERN.fullmatch(text):
-        if not _is_admin(event):
-            await matcher.finish(_reply_text(event, "权限不足：仅群管理员可订阅机厅"))
-            return
-        arcade_name = m.group(1).strip()
+    group_id = str(event.group_id)
+    text = str(event.get_message()).strip()
+    match = re.match(SUBSCRIBE_REGEX_PATTERN, text)
+    if match:
+        arcade_name = match.group(1).strip()
         response = _subscribe_regex(group_id, arcade_name, True)
-        await matcher.finish(_reply_text(event, response))
-        return
+        await subscribe_matcher.finish(_reply_text(event, response))
 
-    # 取消订阅机厅
-    if m := UNSUBSCRIBE_REGEX_PATTERN.fullmatch(text):
-        if not _is_admin(event):
-            await matcher.finish(_reply_text(event, "权限不足：仅群管理员可取消订阅机厅"))
-            return
-        arcade_name = m.group(1).strip()
+
+# 取消订阅机厅命令
+unsubscribe_matcher = on_regex(UNSUBSCRIBE_REGEX_PATTERN, priority=10, block=True)
+
+@unsubscribe_matcher.handle()
+async def handle_unsubscribe(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理取消订阅机厅命令"""
+    _check_and_reset_daily_data()
+    if not _is_admin(event):
+        await unsubscribe_matcher.finish(_reply_text(event, "权限不足：仅群管理员可取消订阅机厅"))
+        return
+    group_id = str(event.group_id)
+    text = str(event.get_message()).strip()
+    match = re.match(UNSUBSCRIBE_REGEX_PATTERN, text)
+    if match:
+        arcade_name = match.group(1).strip()
         response = _subscribe_regex(group_id, arcade_name, False)
-        await matcher.finish(_reply_text(event, response))
-        return
+        await unsubscribe_matcher.finish(_reply_text(event, response))
 
-    # 添加别名
-    if m := ADD_ALIAS_PATTERN.fullmatch(text):
-        if not _is_admin(event):
-            await matcher.finish(_reply_text(event, "权限不足：仅群管理员可添加别名"))
-            return
-        arcade_name, alias = m.groups()
+
+# 添加别名命令
+add_alias_matcher = on_regex(ADD_ALIAS_PATTERN, priority=10, block=True)
+
+@add_alias_matcher.handle()
+async def handle_add_alias(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理添加别名命令"""
+    _check_and_reset_daily_data()
+    if not _is_admin(event):
+        await add_alias_matcher.finish(_reply_text(event, "权限不足：仅群管理员可添加别名"))
+        return
+    text = str(event.get_message()).strip()
+    match = re.match(ADD_ALIAS_PATTERN, text)
+    if match:
+        arcade_name, alias = match.groups()
         response = _add_alias(arcade_name, alias)
-        await matcher.finish(_reply_text(event, response))
-        return
+        await add_alias_matcher.finish(_reply_text(event, response))
 
-    # 删除别名
-    if m := DEL_ALIAS_PATTERN.fullmatch(text):
-        if not _is_admin(event):
-            await matcher.finish(_reply_text(event, "权限不足：仅群管理员可删除别名"))
-            return
-        arcade_name, alias = m.groups()
+
+# 删除别名命令
+del_alias_matcher = on_regex(DEL_ALIAS_PATTERN, priority=10, block=True)
+
+@del_alias_matcher.handle()
+async def handle_del_alias(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理删除别名命令"""
+    _check_and_reset_daily_data()
+    if not _is_admin(event):
+        await del_alias_matcher.finish(_reply_text(event, "权限不足：仅群管理员可删除别名"))
+        return
+    text = str(event.get_message()).strip()
+    match = re.match(DEL_ALIAS_PATTERN, text)
+    if match:
+        arcade_name, alias = match.groups()
         response = _del_alias(arcade_name, alias)
-        await matcher.finish(_reply_text(event, response))
-        return
+        await del_alias_matcher.finish(_reply_text(event, response))
 
-    # 添加机厅
-    if m := ADD_ARCADE_PATTERN.fullmatch(text):
-        if not _is_admin(event):
-            await matcher.finish(_reply_text(event, "权限不足：仅群管理员可添加机厅"))
-            return
-        command_text = m.group(2).strip()
+
+# 添加机厅命令
+add_arcade_matcher = on_regex(ADD_ARCADE_PATTERN, priority=10, block=True)
+
+@add_arcade_matcher.handle()
+async def handle_add_arcade(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理添加机厅命令"""
+    _check_and_reset_daily_data()
+    if not _is_admin(event):
+        await add_arcade_matcher.finish(_reply_text(event, "权限不足：仅群管理员可添加机厅"))
+        return
+    text = str(event.get_message()).strip()
+    match = re.match(ADD_ARCADE_PATTERN, text)
+    if match:
+        command_text = match.group(2).strip()
         response = _add_arcade(command_text)
-        await matcher.finish(_reply_text(event, response))
-        return
+        await add_arcade_matcher.finish(_reply_text(event, response))
 
-    # 删除机厅
-    if m := DELETE_ARCADE_PATTERN.fullmatch(text):
-        if not _is_admin(event):
-            await matcher.finish(_reply_text(event, "权限不足：仅群管理员可删除机厅"))
-            return
-        command_text = m.group(2).strip()
+
+# 删除机厅命令
+delete_arcade_matcher = on_regex(DELETE_ARCADE_PATTERN, priority=10, block=True)
+
+@delete_arcade_matcher.handle()
+async def handle_delete_arcade(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理删除机厅命令"""
+    _check_and_reset_daily_data()
+    if not _is_admin(event):
+        await delete_arcade_matcher.finish(_reply_text(event, "权限不足：仅群管理员可删除机厅"))
+        return
+    text = str(event.get_message()).strip()
+    match = re.match(DELETE_ARCADE_PATTERN, text)
+    if match:
+        command_text = match.group(2).strip()
         response = _delete_arcade(command_text)
-        await matcher.finish(_reply_text(event, response))
-        return
+        await delete_arcade_matcher.finish(_reply_text(event, response))
 
-    # 查找机厅
-    if m := FIND_ARCADE_PATTERN.fullmatch(text):
-        keyword = m.group(1)
+
+# 查找机厅命令
+find_arcade_matcher = on_regex(FIND_ARCADE_PATTERN, priority=10, block=True)
+
+@find_arcade_matcher.handle()
+async def handle_find_arcade(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理查找机厅命令"""
+    _check_and_reset_daily_data()
+    text = str(event.get_message()).strip()
+    match = re.match(FIND_ARCADE_PATTERN, text)
+    if match:
+        keyword = match.group(1)
         text_result = _find_arcades(keyword)
         img = text_to_image(text_result)
         base64_img = image_to_base64(img)
-        await matcher.finish(MessageSegment.reply(event.message_id) + MessageSegment.image(base64_img))
-        return
+        await find_arcade_matcher.finish(MessageSegment.reply(event.message_id) + MessageSegment.image(base64_img))
+
+
+# 查询机厅地址命令
+location_matcher = on_regex(LOCATION_QUERY_PATTERN, priority=10, block=True)
+
+@location_matcher.handle()
+async def handle_location(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理查询机厅地址命令"""
+    _check_and_reset_daily_data()
+    text = str(event.get_message()).strip()
+    match = re.match(LOCATION_QUERY_PATTERN, text)
+    if match:
+        place = match.group(1)
+        response = _query_location(place)
+        if response:
+            await location_matcher.finish(_reply_text(event, response))
+
+
+# 减少指定数量命令
+subtract_matcher = on_regex(SUBTRACT_PATTERN, priority=10, block=True)
+
+@subtract_matcher.handle()
+async def handle_subtract(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理减少指定数量命令"""
+    _check_and_reset_daily_data()
+    group_id = str(event.group_id)
+    user_name = event.sender.nickname or str(event.user_id)
+    text = str(event.get_message()).strip()
+    match = re.match(SUBTRACT_PATTERN, text)
+    if match:
+        place, number_text = match.groups()
+        number = int(number_text)
+        response = _apply_delta(place, -number, user_name, "subtract", group_id)
+        if response:
+            await subtract_matcher.finish(_reply_text(event, response))
+
+
+# 增加指定数量命令
+add_matcher = on_regex(ADD_PATTERN, priority=10, block=True)
+
+@add_matcher.handle()
+async def handle_add(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理增加指定数量命令"""
+    _check_and_reset_daily_data()
+    group_id = str(event.group_id)
+    user_name = event.sender.nickname or str(event.user_id)
+    text = str(event.get_message()).strip()
+    match = re.match(ADD_PATTERN, text)
+    if match:
+        place, number_text = match.groups()
+        number = int(number_text)
+        response = _apply_delta(place, number, user_name, "add", group_id)
+        if response:
+            await add_matcher.finish(_reply_text(event, response))
+
+
+# 增加 1 命令
+increment_matcher = on_regex(INCREMENT_PATTERN, priority=10, block=True)
+
+@increment_matcher.handle()
+async def handle_increment(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理增加 1 命令"""
+    _check_and_reset_daily_data()
+    group_id = str(event.group_id)
+    user_name = event.sender.nickname or str(event.user_id)
+    text = str(event.get_message()).strip()
+    match = re.match(INCREMENT_PATTERN, text)
+    if match:
+        place = match.group(1)
+        response = _apply_delta(place, 1, user_name, "increment", group_id)
+        if response:
+            await increment_matcher.finish(_reply_text(event, response))
+
+
+# 减少 1 命令
+decrement_matcher = on_regex(DECREMENT_PATTERN, priority=10, block=True)
+
+@decrement_matcher.handle()
+async def handle_decrement(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理减少 1 命令"""
+    _check_and_reset_daily_data()
+    group_id = str(event.group_id)
+    user_name = event.sender.nickname or str(event.user_id)
+    text = str(event.get_message()).strip()
+    match = re.match(DECREMENT_PATTERN, text)
+    if match:
+        place = match.group(1)
+        response = _apply_delta(place, -1, user_name, "decrement", group_id)
+        if response:
+            await decrement_matcher.finish(_reply_text(event, response))
+
+
+# 设置为指定值 (=) 命令
+set_equal_matcher = on_regex(SET_EQUAL_PATTERN, priority=10, block=True)
+
+@set_equal_matcher.handle()
+async def handle_set_equal(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理设置为指定值 (=) 命令"""
+    _check_and_reset_daily_data()
+    group_id = str(event.group_id)
+    user_name = event.sender.nickname or str(event.user_id)
+    text = str(event.get_message()).strip()
+    match = re.match(SET_EQUAL_PATTERN, text)
+    if match:
+        place, number_text = match.groups()
+        number = int(number_text)
+        response = _set_single_count(place, number, user_name, group_id)
+        if response:
+            await set_equal_matcher.finish(_reply_text(event, response))
+
+
+# 设置为指定值 (直接数字) 命令
+set_direct_matcher = on_regex(SET_DIRECT_PATTERN, priority=10, block=True)
+
+@set_direct_matcher.handle()
+async def handle_set_direct(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理设置为指定值 (直接数字) 命令"""
+    _check_and_reset_daily_data()
+    group_id = str(event.group_id)
+    user_name = event.sender.nickname or str(event.user_id)
+    text = str(event.get_message()).strip()
+    match = re.match(SET_DIRECT_PATTERN, text)
+    if match:
+        place, number_text = match.groups()
+        number = int(number_text)
+        response = _set_single_count(place, number, user_name, group_id)
+        if response:
+            await set_direct_matcher.finish(_reply_text(event, response))
+
+
+# 查询单个机厅命令
+query_matcher = on_regex(QUERY_PATTERN, priority=10, block=True)
+
+@query_matcher.handle()
+async def handle_query(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理查询单个机厅命令"""
+    _check_and_reset_daily_data()
+    text = str(event.get_message()).strip()
+    match = re.match(QUERY_PATTERN, text)
+    if match:
+        place = match.group(1)
+        response = _query_place(place, place)
+        if response:
+            await query_matcher.finish(_reply_text(event, response))
+
+
+# 查询历史记录命令
+history_matcher = on_regex(HISTORY_PATTERN, priority=10, block=True)
+
+@history_matcher.handle()
+async def handle_history(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理查询历史记录命令"""
+    _check_and_reset_daily_data()
+    text = str(event.get_message()).strip()
+    match = re.match(HISTORY_PATTERN, text)
+    if match:
+        place = match.group(1)
+        response = _query_history(place)
+        if response:
+            await history_matcher.finish(_reply_text(event, response))
