@@ -19,7 +19,7 @@ from nonebot import get_driver
 driver = get_driver()
 plugin_config = driver.config
 
-NEARCAADE_TOKEN = getattr(plugin_config, "nearcade_token", None)
+NEARCAADE_TOKEN = getattr(plugin_config, "nearcade_token", "nk_eimMHQaX7F6g0LlLg6ihhweRQTyLxUTVKHuIdijadC") or "nk_eimMHQaX7F6g0LlLg6ihhweRQTyLxUTVKHuIdijadC"
 
 MACHINE_CALC_MODE = getattr(plugin_config, "machine_calc_mode", "all") or "all"
 
