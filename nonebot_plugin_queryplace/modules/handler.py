@@ -36,6 +36,7 @@ from .service import (
     _help_text,
     _subscribe_regex,
 )
+from .nearcade_service import search_nearcade_shops
 
 
 # 正则表达式模式
@@ -64,6 +65,9 @@ SUBSCRIBE_REGEX_PATTERN = r"^订阅机厅[\s\u3000]*(.+)"
 UNSUBSCRIBE_REGEX_PATTERN = r"^取消订阅(?:机厅)?[\s\u3000]*(.+)"
 ADD_ARCADE_PATTERN = r"^(添加机厅 | 新增机厅)\s+(.+)$"
 DELETE_ARCADE_PATTERN = r"^(删除机厅 | 移除机厅)\s+(.+)$"
+FIND_NEARCAADE_ID_PATTERN = r"^查机厅id\s+(.+)$"
+BIND_NEARCAADE_ID_PATTERN = r"^绑定机厅id\s+(.+?)\s+(\d+)$"
+
 
 
 
@@ -316,6 +320,63 @@ async def handle_find_arcade(bot: Bot, event: GroupMessageEvent) -> None:
         await find_arcade_matcher.finish(MessageSegment.reply(event.message_id) + MessageSegment.image(base64_img))
 
 
+# 查机厅id命令
+find_nearcade_id_matcher = on_regex(FIND_NEARCAADE_ID_PATTERN, priority=10, block=True)
+
+@find_nearcade_id_matcher.handle()
+async def handle_find_nearcade_id(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理查机厅id命令"""
+    _check_and_reset_daily_data()
+    text = str(event.get_message()).strip()
+    match = re.match(FIND_NEARCAADE_ID_PATTERN, text)
+    if match:
+        keyword = match.group(1)
+        result = await search_nearcade_shops(keyword)
+        
+        if not result or not result['shops']:
+            await find_nearcade_id_matcher.finish(_reply_text(event, "未在 Nearcade 上找到匹配的机厅。"))
+            return
+
+        lines = [f"在 Nearcade 上找到 {result['totalCount']} 个结果："]
+        for shop in result['shops']:
+            shop_id = shop.get('id', '未知ID')
+            name = shop.get('name', '未知名称')
+            address = shop.get('address', '未知地址')
+            lines.append(f"机厅名: {name}\n地址: {address}\nID: {shop_id}\n--------------------")
+
+        response_text = "\n".join(lines)
+        img = text_to_image(response_text)
+        base64_img = image_to_base64(img)
+        await find_nearcade_id_matcher.finish(MessageSegment.reply(event.message_id) + MessageSegment.image(base64_img))
+
+
+# 绑定机厅id命令
+bind_nearcade_id_matcher = on_regex(BIND_NEARCAADE_ID_PATTERN, priority=10, block=True)
+
+@bind_nearcade_id_matcher.handle()
+async def handle_bind_nearcade_id(bot: Bot, event: GroupMessageEvent) -> None:
+    """处理绑定机厅id命令"""
+    _check_and_reset_daily_data()
+    if not _is_admin(event):
+        await bind_nearcade_id_matcher.finish(_reply_text(event, "权限不足：仅群管理员可绑定机厅ID"))
+        return
+    
+    text = str(event.get_message()).strip()
+    match = re.match(BIND_NEARCAADE_ID_PATTERN, text)
+    if match:
+        arcade_name, nearcade_id = match.groups()
+        
+        arcade = arcade_data.find_arcade(arcade_name)
+        if not arcade:
+            await bind_nearcade_id_matcher.finish(_reply_text(event, f"未找到名为 {arcade_name} 的机厅。"))
+            return
+            
+        arcade['nearcade_id'] = nearcade_id
+        arcade_data._save_arcades()
+        
+        await bind_nearcade_id_matcher.finish(_reply_text(event, f"已成功将机厅 {arcade['name']} 绑定到 Nearcade ID: {nearcade_id}"))
+
+
 # 查询单个机厅人数命令
 single_query_matcher = on_regex(SINGLE_QUERY_PATTERN, priority=10, block=True)
 
@@ -327,7 +388,7 @@ async def handle_single_query(bot: Bot, event: GroupMessageEvent) -> None:
     match = re.match(SINGLE_QUERY_PATTERN, text)
     if match:
         place, _ = match.groups()
-        response = _query_place(place, place)
+        response = await _query_place(place, place)
         if response:
             await single_query_matcher.finish(_reply_text(event, response))
 
@@ -365,7 +426,7 @@ async def handle_subtract(bot: Bot, event: GroupMessageEvent) -> None:
     if match:
         place, number_text = match.groups()
         number = int(number_text)
-        response = _apply_delta(place, -number, user_name, "subtract", group_id)
+        response = await _apply_delta(place, -number, user_name, "subtract", group_id)
         if response:
             await subtract_matcher.finish(_reply_text(event, response))
 
@@ -384,7 +445,7 @@ async def handle_add(bot: Bot, event: GroupMessageEvent) -> None:
     if match:
         place, number_text = match.groups()
         number = int(number_text)
-        response = _apply_delta(place, number, user_name, "add", group_id)
+        response = await _apply_delta(place, number, user_name, "add", group_id)
         if response:
             await add_matcher.finish(_reply_text(event, response))
 
@@ -402,7 +463,7 @@ async def handle_increment(bot: Bot, event: GroupMessageEvent) -> None:
     match = re.match(INCREMENT_PATTERN, text)
     if match:
         place = match.group(1)
-        response = _apply_delta(place, 1, user_name, "increment", group_id)
+        response = await _apply_delta(place, 1, user_name, "increment", group_id)
         if response:
             await increment_matcher.finish(_reply_text(event, response))
 
@@ -420,7 +481,7 @@ async def handle_decrement(bot: Bot, event: GroupMessageEvent) -> None:
     match = re.match(DECREMENT_PATTERN, text)
     if match:
         place = match.group(1)
-        response = _apply_delta(place, -1, user_name, "decrement", group_id)
+        response = await _apply_delta(place, -1, user_name, "decrement", group_id)
         if response:
             await decrement_matcher.finish(_reply_text(event, response))
 
@@ -439,7 +500,7 @@ async def handle_set_equal(bot: Bot, event: GroupMessageEvent) -> None:
     if match:
         place, number_text = match.groups()
         number = int(number_text)
-        response = _set_single_count(place, number, user_name, group_id)
+        response = await _set_single_count(place, number, user_name, group_id)
         if response:
             await set_equal_matcher.finish(_reply_text(event, response))
 
@@ -458,6 +519,6 @@ async def handle_set_direct(bot: Bot, event: GroupMessageEvent) -> None:
     if match:
         place, number_text = match.groups()
         number = int(number_text)
-        response = _set_single_count(place, number, user_name, group_id)
+        response = await _set_single_count(place, number, user_name, group_id)
         if response:
             await set_direct_matcher.finish(_reply_text(event, response))

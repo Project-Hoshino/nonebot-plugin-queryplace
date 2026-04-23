@@ -15,6 +15,9 @@ from .config import (
 )
 from .arcade import arcade_data
 from .history import history_data
+from .nearcade_service import update_nearcade_attendance, get_nearcade_attendance
+
+
 
 
 # 查询缓存类
@@ -95,17 +98,28 @@ def _response_for_update(place: str, old_count: int, new_count: int,
     return f"更新成功！{summary}\n{display_name}现在{_format_count_with_avg(new_count, arcade)}"
 
 
-def _query_place(place: str, original_input: str) -> Optional[str]:
+async def _query_place(place: str, original_input: str) -> Optional[str]:
     """查询单个机厅"""
     place = _normalize_place(place)
     arcade, matched_alias = arcade_data.find_arcade_by_alias(original_input)
     if not arcade:
         return None
-    
+
     # 检查是否为当天更新（今天 4 点后算当天周期）
     time_str = arcade.get('time', '')
     is_today = _is_same_day(time_str) if time_str else False
-    
+
+    # 如果机厅绑定了 Nearcade ID 且本地数据不是最新的，则尝试从 Nearcade 同步
+    if arcade.get('nearcade_id') and not is_today:
+        new_count = await get_nearcade_attendance(arcade['nearcade_id'])
+        if new_count is not None:
+            arcade['person'] = new_count
+            arcade['time'] = _today_iso()
+            arcade['by'] = 'Nearcade 同步'
+            arcade_data._save_arcades()
+            # 更新后重新检查 is_today
+            is_today = True
+
     # 检查今天是否有活动（即使人数为 0，只要有更新记录就算有活动）
     has_activity = _has_today_activity(arcade['name'])
     
@@ -306,7 +320,7 @@ def _query_location(place: str) -> Optional[str]:
     return location_info
 
 
-def _apply_delta(place: str, delta: int, user_name: str = "", 
+async def _apply_delta(place: str, delta: int, user_name: str = "", 
                  action_type: str = "add", group_id: str = "") -> Optional[str]:
     """应用增量更新"""
     place = _normalize_place(place)
@@ -335,6 +349,10 @@ def _apply_delta(place: str, delta: int, user_name: str = "",
     arcade['by'] = user_name
     arcade_data._save_arcades()
     
+    # 如果绑定了 Nearcade ID，则上报人数
+    if arcade.get('nearcade_id'):
+        await update_nearcade_attendance(arcade['nearcade_id'], new_count)
+    
     # 记录历史
     if action_type == "add":
         history_data.add_record(place, "add", user_name, abs(delta), old_count, new_count)
@@ -348,7 +366,7 @@ def _apply_delta(place: str, delta: int, user_name: str = "",
     return _response_for_update(place, old_count, new_count, action_type, user_name)
 
 
-def _set_single_count(place: str, count: int, user_name: str = "", 
+async def _set_single_count(place: str, count: int, user_name: str = "", 
                       group_id: str = "") -> Optional[str]:
     """设置单个机厅的卡数"""
     if count < 0:
@@ -379,6 +397,10 @@ def _set_single_count(place: str, count: int, user_name: str = "",
     arcade['time'] = _today_iso()
     arcade['by'] = user_name
     arcade_data._save_arcades()
+    
+    # 如果绑定了 Nearcade ID，则上报人数
+    if arcade.get('nearcade_id'):
+        await update_nearcade_attendance(arcade['nearcade_id'], count)
     
     # 记录历史
     history_data.add_record(place, "set", user_name, count, old_count, count)
