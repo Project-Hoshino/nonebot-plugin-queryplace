@@ -9,7 +9,7 @@ from typing import Dict, List, Any
 
 from nonebot.log import logger
 
-from .config import NEARCAADE_TOKEN
+from .config import NEARCADE_TOKEN
 
 
 async def search_nearcade_shops(keyword: str, page: int = 1, limit: int = 5) -> Dict[str, Any]:
@@ -60,12 +60,12 @@ async def update_nearcade_attendance(shop_id: str, count: int) -> bool:
     Returns:
         是否成功更新
     """
-    if not NEARCAADE_TOKEN:
-        logger.warning("未配置 NEARCAADE_TOKEN，无法上报人数")
+    if not NEARCADE_TOKEN:
+        logger.warning("未配置 NEARCADE_TOKEN，无法上报人数")
         return False
 
     headers = {
-        'Authorization': f'Bearer {NEARCAADE_TOKEN}',
+        'Authorization': f'Bearer {NEARCADE_TOKEN}',
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (compatible; NoneBot-QueryPlace-Plugin)'
     }
