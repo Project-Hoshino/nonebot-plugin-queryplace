@@ -35,6 +35,7 @@ from .service import (
     _delete_arcade,
     _help_text,
     _subscribe_regex,
+    _bind_nearcade_id,
 )
 from .nearcade_service import search_nearcade_shops
 
@@ -365,16 +366,8 @@ async def handle_bind_nearcade_id(bot: Bot, event: GroupMessageEvent) -> None:
     match = re.match(BIND_NEARCAADE_ID_PATTERN, text)
     if match:
         arcade_name, nearcade_id = match.groups()
-        
-        arcade = arcade_data.find_arcade(arcade_name)
-        if not arcade:
-            await bind_nearcade_id_matcher.finish(_reply_text(event, f"未找到名为 {arcade_name} 的机厅。"))
-            return
-            
-        arcade['nearcade_id'] = nearcade_id
-        arcade_data._save_arcades()
-        
-        await bind_nearcade_id_matcher.finish(_reply_text(event, f"已成功将机厅 {arcade['name']} 绑定到 Nearcade ID: {nearcade_id}"))
+        response = _bind_nearcade_id(arcade_name, nearcade_id)
+        await bind_nearcade_id_matcher.finish(_reply_text(event, response))
 
 
 # 查询单个机厅人数命令

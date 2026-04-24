@@ -494,6 +494,18 @@ def _del_alias(arcade_name: str, alias: str) -> str:
     return f"从机厅 {arcade['name']} 删除别名：{alias}"
 
 
+def _bind_nearcade_id(arcade_name: str, nearcade_id: str) -> str:
+    """绑定机厅的 Nearcade ID"""
+    arcade = arcade_data.find_arcade(arcade_name)
+    if not arcade:
+        return f"未找到名为 {arcade_name} 的机厅。"
+        
+    arcade['nearcade_id'] = nearcade_id
+    arcade_data._save_arcades()
+    
+    return f"已成功将机厅 {arcade['name']} 绑定到 Nearcade ID: {nearcade_id}"
+
+
 def _find_arcades(keyword: str) -> str:
     """查找机厅"""
     results = []
@@ -625,6 +637,8 @@ def _help_text() -> str:
         "  删除别名 <机厅名> <别名>  删除机厅别名",
         "  添加机厅 <店名> <地址> <舞萌 DX 机台数量> <中二节奏机台数量> <简称>  添加机厅信息",
         "  删除机厅 <店名>  删除机厅信息",
+        "  查机厅id <关键词>：从 Nearcade 搜索机厅 ID"
+        "  绑定机厅id <机厅名> <Nearcade机厅ID> 将本地机厅数据绑定Nearcade数据源"
         ""
     ])
 
