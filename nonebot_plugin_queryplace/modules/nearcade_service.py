@@ -29,7 +29,8 @@ async def search_nearcade_shops(keyword: str, page: int = 1, limit: int = 5) -> 
 
     try:
         encoded_query = urllib.parse.quote(keyword)
-        url = f"https://nearcade.phizone.cn/api/shops?q={encoded_query}&page={page}&limit={limit}"
+        # url = f"https://nearcade.phizone.cn/api/shops?q={encoded_query}&page={page}&limit={limit}"
+        url = f"https://nearcade.phizone.cn/api/shops?q={encoded_query}&limit=1000"
         
         headers = {
             'User-Agent': 'Mozilla/5.0 (compatible; NoneBot-QueryPlace-Plugin)',
