@@ -120,11 +120,11 @@ class ArcadeData:
                             item.setdefault('alias', [])
                             item.setdefault('group', [])
                             item.setdefault('person', 0)
-                        item.setdefault('by', '')
-                        item.setdefault('time', '')
-                        item.setdefault('nearcade_id', '')
-                        validated_arcades.append(item)
-                    else:
+                            item.setdefault('by', '')
+                            item.setdefault('time', '')
+                            item.setdefault('nearcade_id', '')
+                            validated_arcades.append(item)
+                        else:
                             print(f"警告：发现无效的机厅数据项，跳过：{item}")
                     
                     self.arcades = validated_arcades
@@ -238,6 +238,8 @@ class ArcadeData:
                         item.setdefault('time', '')
                         item.setdefault('nearcade_id', '')
                         validated_arcades.append(item)
+                    else:
+                        print(f"警告：发现无效的机厅数据项，跳过：{item}")
                 
                 self.arcades = validated_arcades
                 self.last_update = datetime.now().isoformat()
