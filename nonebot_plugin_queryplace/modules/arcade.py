@@ -63,7 +63,7 @@ class ArcadeData:
                     "person: 当前卡数（由程序自动维护）",
                     "by: 最后更新者（由程序自动维护）",
                     "time: 最后更新时间（由程序自动维护）",
-                    "nearcade_id": "Nearcade 机厅 ID（可选，用于上报人数）"
+                    "nearcade_id: Nearcade 机厅 ID（可选，用于上报人数）",
                 ]
             }
         }
@@ -120,10 +120,10 @@ class ArcadeData:
                             item.setdefault('alias', [])
                             item.setdefault('group', [])
                             item.setdefault('person', 0)
-                            item.setdefault('by', '')
-                            item.setdefault('time', '')
-                            item.setdefault('nearcade_id', '')
-                            validated_arcades.append(item)
+                        item.setdefault('by', '')
+                        item.setdefault('time', '')
+                        item.setdefault('nearcade_id', '')
+                        validated_arcades.append(item)
                         else:
                             print(f"警告：发现无效的机厅数据项，跳过：{item}")
                     
