@@ -113,4 +113,4 @@ _✨ 机厅排卡插件 for NoneBot2 ✨_
 
 ---
 
-Thanks to [YounBot](https://github.com/BakaBotTeam/YounBot/blob/master/YounBot/Listener/QueryPlaceListener.cs), [ArcadeQueue](https://github.com/SalinX/ArcadeQueue.git), [CrazyKid's AP Bot](https://github.com/Nyano1337/CrazyKid-QQRobot/blob/master/src/main/java/cn/crazykid/qqrobot/listener/group/message/GroupMessageMaimaiQueueCardListener.kt),[nonebot_plugin_mai_arcade](https://github.com/YuuzukiRin/nonebot_plugin_mai_arcade) ~~Copilot, TRAE and Qwen Studio(((~~
+Thanks to [YounBot](https://github.com/BakaBotTeam/YounBot/blob/master/YounBot/Listener/QueryPlaceListener.cs), [ArcadeQueue](https://github.com/SalinX/ArcadeQueue.git), [CrazyKid's AP Bot](https://github.com/Nyano1337/CrazyKid-QQRobot/blob/master/src/main/java/cn/crazykid/qqrobot/listener/group/message/GroupMessageMaimaiQueueCardListener.kt), [nonebot_plugin_mai_arcade](https://github.com/YuuzukiRin/nonebot_plugin_mai_arcade) ~~Copilot, TRAE and Qwen Studio(((~~
