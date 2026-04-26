@@ -6,6 +6,7 @@ from __future__ import annotations
 import httpx
 import urllib.parse
 from typing import Dict, List, Any
+from datetime import datetime, timezone, timedelta
 
 from nonebot.log import logger
 
@@ -112,15 +113,15 @@ async def update_nearcade_attendance(shop_id: str, count: int) -> bool:
         return False
 
 
-async def get_nearcade_attendance(shop_id: str) -> int | None:
+async def get_nearcade_attendance(shop_id: str) -> Dict[str, Any] | None:
     """
-    从 Nearcade (bemanicn) 获取机厅的排队人数
+    从 Nearcade 获取机厅的排队人数、更新时间和更新者
 
     Args:
         shop_id: Nearcade 机厅 ID (bemanicn ID)
 
     Returns:
-        当前排队人数，如果失败则返回 None
+        一个包含 'count', 'time', 'user' 的字典，如果失败则返回 None
     """
     url = f"https://nearcade.phizone.cn/api/shops/bemanicn/{shop_id}/attendance"
     headers = {
@@ -133,16 +134,38 @@ async def get_nearcade_attendance(shop_id: str) -> int | None:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
             data = response.json()
-            # The bemanicn endpoint returns a 'total' field for the attendance count
-            total = data.get('total')
-            if isinstance(total, int):
-                logger.info(f"成功从 Nearcade (bemanicn) 获取机厅 {shop_id} 的人数: {total}")
-                return total
-            else:
-                logger.warning(f"从 Nearcade (bemanicn) 获取机厅 {shop_id} 的人数时，返回的数据格式不正确: {data}")
-                return None
+
+            # 只使用 'reported' 列表中的第一个条目
+            if 'reported' in data and data['reported']:
+                first_report = data['reported'][0]
+                count = first_report.get('currentAttendances')
+                time_str = first_report.get('reportedAt')
+                
+                # 转换时间到 UTC+8
+                utc_plus_8 = timezone(timedelta(hours=8))
+                try:
+                    # 解析带'Z'的ISO格式时间为 aware datetime 对象
+                    utc_time = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
+                    # 转换为 UTC+8 时区
+                    local_time = utc_time.astimezone(utc_plus_8)
+                    # 格式化回 ISO 字符串
+                    time = local_time.isoformat()
+                except (ValueError, TypeError):
+                    logger.warning(f"无法解析 Nearcade 返回的时间格式: {time_str}，将使用原始值。")
+                    time = time_str # 解析失败时使用原始字符串
+
+                # 使用 displayName 作为更新者
+                user = first_report.get('reporter', {}).get('displayName', '未知')
+                
+                if isinstance(count, int):
+                    logger.info(f"成功从 Nearcade 获取机厅 {shop_id} 的详细人数: {count}")
+                    return {'count': count, 'time': time, 'user': user}
+
+            logger.warning(f"从 Nearcade 获取机厅 {shop_id} 的人数时，未找到有效的 'reported' 数据: {data}")
+            return None
+            
     except httpx.HTTPStatusError as e:
-        logger.error(f"从 Nearcade (bemanicn) 获取人数失败 (HTTP {e.response.status_code}): {e.response.text}")
+        logger.error(f"从 Nearcade 获取人数失败 (HTTP {e.response.status_code}): {e.response.text}")
         return None
     except Exception as e:
         logger.error(f"从 Nearcade (bemanicn) 获取人数时发生未知错误: {e}")

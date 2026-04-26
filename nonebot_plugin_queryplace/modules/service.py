@@ -14,6 +14,7 @@ from .config import (
     _get_current_day_key,
 )
 from .arcade import arcade_data
+from .nearcade_service import search_nearcade_shops, get_nearcade_attendance
 from .history import history_data
 from .nearcade_service import update_nearcade_attendance, get_nearcade_attendance
 
@@ -109,16 +110,35 @@ async def _query_place(place: str, original_input: str) -> Optional[str]:
     time_str = arcade.get('time', '')
     is_today = _is_same_day(time_str) if time_str else False
 
-    # 如果机厅绑定了 Nearcade ID 且本地数据不是最新的，则尝试从 Nearcade 同步
-    if arcade.get('nearcade_id') and not is_today:
-        new_count = await get_nearcade_attendance(arcade['nearcade_id'])
-        if new_count is not None:
-            arcade['person'] = new_count
-            arcade['time'] = _today_iso()
-            arcade['by'] = 'Nearcade 同步'
-            arcade_data._save_arcades()
-            # 更新后重新检查 is_today
-            is_today = True
+    # 如果机厅绑定了 Nearcade ID，则总是尝试从 Nearcade 同步
+    if arcade.get('nearcade_id'):
+        nearcade_data = await get_nearcade_attendance(arcade['nearcade_id'])
+        # 如果成功获取到数据
+        if nearcade_data and isinstance(nearcade_data, dict):
+            new_count = nearcade_data.get('count')
+            new_time = nearcade_data.get('time')
+            new_user = nearcade_data.get('user')
+
+            if new_count is not None:
+                # 只要成功从 Nearcade 获取，就认为数据是今天的
+                is_today = True
+                # 只在人数不一致时，才更新所有信息
+                if new_count != arcade.get('person', 0):
+                    old_count = arcade.get('person', 0)
+                    # 人数不一致，更新所有信息并保存
+                    arcade['person'] = new_count
+                    arcade['time'] = new_time if new_time else _today_iso()
+                    arcade['by'] = new_user if new_user else 'Nearcade 同步'
+                    arcade_data._save_arcades()
+
+                    # 将同步操作添加到历史记录
+                    history_data.add_record(
+                        arcade_name=arcade['name'],
+                        action="set",
+                        user=new_user if new_user else 'Nearcade 同步',
+                        old_count=old_count,
+                        new_count=new_count
+                    )
 
     # 检查今天是否有活动（即使人数为 0，只要有更新记录就算有活动）
     has_activity = _has_today_activity(arcade['name'])
