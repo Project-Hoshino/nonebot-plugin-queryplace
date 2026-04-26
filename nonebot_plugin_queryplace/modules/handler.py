@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+from nonebot.log import logger
 from nonebot import on_command, on_regex, get_driver, require
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, MessageSegment
 from nonebot_plugin_apscheduler import scheduler
@@ -129,7 +130,7 @@ def _check_and_reset_daily_data():
     if history_data.last_reset_date != current_day_key:
         if history_data.last_reset_date is not None and history_data.last_reset_date != current_day_key:
             history_data.history = {}
-            print(f"清空历史记录，从 {history_data.last_reset_date} 到 {current_day_key}")
+            logger.info(f"清空历史记录，从 {history_data.last_reset_date} 到 {current_day_key}")
         history_data.last_reset_date = current_day_key
         history_data.save_history()
 
@@ -146,14 +147,14 @@ async def load_data():
 @scheduler.scheduled_job("cron", hour=4, minute=0, id="reset_daily_data")
 async def reset_daily_data():
     """每天 4 点重置数据"""
-    print("正在重置每日数据...")
+    logger.info("正在重置每日数据...")
     arcade_data.reset_daily_data()
     # 清空历史记录 - 使用统一的游戏日逻辑
     current_day_key = _get_current_day_key()
     history_data.last_reset_date = current_day_key
     history_data.history = {}  # 清空所有历史记录
     history_data.save_history()
-    print("每日数据重置完成")
+    logger.info("每日数据重置完成")
 
 
 # 帮助命令

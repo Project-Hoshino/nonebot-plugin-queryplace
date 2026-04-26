@@ -1,8 +1,4 @@
-"""
-机厅数据管理模块
-"""
-from __future__ import annotations
-
+from nonebot.log import logger
 import json
 import aiohttp
 from datetime import datetime
@@ -71,11 +67,11 @@ class ArcadeData:
         try:
             with safe_file_write(LOCAL_ARCADE_FILE) as f:
                 json.dump(template_data, f, ensure_ascii=False, indent=2)
-            print(f"已创建本地数据库模板文件：{LOCAL_ARCADE_FILE}")
-            print("请编辑此文件以添加您的机厅数据，然后重启机器人。")
+            logger.info(f"已创建本地数据库模板文件：{LOCAL_ARCADE_FILE}")
+            logger.info("请编辑此文件以添加您的机厅数据，然后重启机器人。")
             return True
         except Exception as e:
-            print(f"创建本地数据库模板失败：{e}")
+            logger.error(f"创建本地数据库模板失败：{e}")
             return False
 
     async def load_arcades(self):
@@ -84,15 +80,15 @@ class ArcadeData:
         if not USE_ONLINE_DATABASE:
             # 检查本地文件是否存在，如果不存在则创建模板
             if not LOCAL_ARCADE_FILE.exists():
-                print(f"本地数据库文件不存在：{LOCAL_ARCADE_FILE}")
+                logger.warning(f"本地数据库文件不存在：{LOCAL_ARCADE_FILE}")
                 self.create_local_template()
                 # 提示用户编辑数据库
-                print("\n" + "="*50)
-                print("本地数据库文件已创建为模板，请按以下步骤操作：")
-                print(f"1. 编辑文件：{LOCAL_ARCADE_FILE}")
-                print("2. 修改模板中的示例数据为您实际的机厅信息")
-                print("3. 保存文件后重启机器人")
-                print("="*50 + "\n")
+                logger.info("\n" + "="*50)
+                logger.info("本地数据库文件已创建为模板，请按以下步骤操作：")
+                logger.info(f"1. 编辑文件：{LOCAL_ARCADE_FILE}")
+                logger.info("2. 修改模板中的示例数据为您实际的机厅信息")
+                logger.info("3. 保存文件后重启机器人")
+                logger.info("="*50 + "\n")
             
             self.current_file = LOCAL_ARCADE_FILE
         else:
@@ -125,12 +121,12 @@ class ArcadeData:
                             item.setdefault('nearcade_id', '')
                             validated_arcades.append(item)
                         else:
-                            print(f"警告：发现无效的机厅数据项，跳过：{item}")
+                            logger.warning(f"警告：发现无效的机厅数据项，跳过：{item}")
                     
                     self.arcades = validated_arcades
                     self.last_update = data.get("last_update") if isinstance(data, dict) else None
             except Exception as e:
-                print(f"加载机厅数据失败：{e}")
+                logger.error(f"加载机厅数据失败：{e}")
                 self.arcades = []
         await self.update_arcades()
 
@@ -166,18 +162,18 @@ class ArcadeData:
                             item.setdefault('nearcade_id', '')
                             validated_local_data.append(item)
                         else:
-                            print(f"警告：发现无效的本地机厅数据项，跳过：{item}")
+                            logger.warning(f"警告：发现无效的本地机厅数据项，跳过：{item}")
                     
                     self.arcades = validated_local_data
                     self.last_update = data.get("last_update") if isinstance(data, dict) else datetime.now().isoformat()
                     # 确保使用本地文件
                     self.current_file = LOCAL_ARCADE_FILE
                     self._save_arcades()
-                    print("Loaded arcades from local file")
+                    logger.info("Loaded arcades from local file")
                 except Exception as e:
-                    print(f"Failed to load local arcades: {e}")
+                    logger.error(f"Failed to load local arcades: {e}")
             else:
-                print("Local arcade file not found")
+                logger.warning("Local arcade file not found")
             return
 
         # Online mode
@@ -239,17 +235,17 @@ class ArcadeData:
                         item.setdefault('nearcade_id', '')
                         validated_arcades.append(item)
                     else:
-                        print(f"警告：发现无效的机厅数据项，跳过：{item}")
+                        logger.warning(f"警告：发现无效的机厅数据项，跳过：{item}")
                 
                 self.arcades = validated_arcades
                 self.last_update = datetime.now().isoformat()
                 # 确保使用在线数据文件
                 self.current_file = ARCADE_DATA_FILE
                 self._save_arcades()
-                print("Updated arcades from online API")
+                logger.info("Updated arcades from online API")
 
         except Exception as e:
-            print(f"Failed to update arcades: {e}")
+            logger.error(f"Failed to update arcades: {e}")
 
     def _save_arcades(self):
         """保存机厅数据"""
@@ -261,7 +257,7 @@ class ArcadeData:
             with safe_file_write(self.current_file) as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"保存机厅数据失败：{e}")
+            logger.error(f"保存机厅数据失败：{e}")
 
     def find_arcade_by_alias(self, name_or_alias: str) -> tuple[Optional[Dict[str, Any]], str]:
         """查找机厅并返回匹配的别名（如果有的话）"""
@@ -322,14 +318,14 @@ class ArcadeData:
                 arcade['time'] = ''   # 清空时间
                 arcade['by'] = ''     # 清空用户名
         self._save_arcades()
-        print("每日数据重置完成")
+        logger.info("每日数据重置完成")
         
         # 更新最后重置时间记录
         try:
             with open(self.last_reset_time_file, 'w', encoding='utf-8') as f:
                 f.write(datetime.now().isoformat())
         except Exception as e:
-            print(f"无法保存最后重置时间：{e}")
+            logger.error(f"无法保存最后重置时间：{e}")
 
     def check_and_reset_if_needed(self):
         """检查是否需要重置数据（基于文件修改时间）"""
@@ -341,11 +337,11 @@ class ArcadeData:
                     last_reset = datetime.fromisoformat(last_reset_str)
                     # 如果最后重置时间不是今天，则重置
                     if last_reset.date() != datetime.now().date():
-                        print(f"检测到上次重置时间是 {last_reset.date()}，今天是 {datetime.now().date()}，需要重置数据")
+                        logger.info(f"检测到上次重置时间是 {last_reset.date()}，今天是 {datetime.now().date()}，需要重置数据")
                         self.reset_daily_data()
                         return True
             except Exception as e:
-                print(f"读取最后重置时间失败：{e}")
+                logger.error(f"读取最后重置时间失败：{e}")
         else:
             # 如果没有记录重置时间的文件，说明可能是首次运行或文件丢失
             # 检查当前数据中是否有昨天的数据
@@ -361,7 +357,7 @@ class ArcadeData:
                         pass
             
             if has_old_data:
-                print("检测到存在旧数据，执行重置")
+                logger.info("检测到存在旧数据，执行重置")
                 self.reset_daily_data()
                 return True
         
@@ -382,7 +378,7 @@ class ArcadeData:
                         pass
             
             if has_old_data:
-                print("检测到今天 4 点前的旧数据，执行重置")
+                logger.info("检测到今天 4 点前的旧数据，执行重置")
                 self.reset_daily_data()
                 return True
         
