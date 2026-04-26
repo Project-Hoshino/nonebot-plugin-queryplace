@@ -378,11 +378,12 @@ single_query_matcher = on_regex(SINGLE_QUERY_PATTERN, priority=10, block=True)
 async def handle_single_query(bot: Bot, event: GroupMessageEvent) -> None:
     """处理查询单个机厅人数命令"""
     _check_and_reset_daily_data()
+    group_id = str(event.group_id)
     text = str(event.get_message()).strip()
     match = re.match(SINGLE_QUERY_PATTERN, text)
     if match:
         place, _ = match.groups()
-        response = await _query_place(place, place)
+        response = await _query_place(place, place, group_id)
         if response:
             await single_query_matcher.finish(_reply_text(event, response))
 
@@ -394,14 +395,15 @@ history_location_matcher = on_regex(HISTORY_LOCATION_PATTERN, priority=10, block
 async def handle_history_location(bot: Bot, event: GroupMessageEvent) -> None:
     """处理查询历史记录和地址命令"""
     _check_and_reset_daily_data()
+    group_id = str(event.group_id)
     text = str(event.get_message()).strip()
     match = re.match(HISTORY_LOCATION_PATTERN, text)
     if match:
         place, query_type = match.groups()
         if query_type == "有谁":
-            response = _query_history(place)
+            response = _query_history(place, group_id)
         else:  # 在哪
-            response = _query_location(place)
+            response = _query_location(place, group_id)
         if response:
             await history_location_matcher.finish(_reply_text(event, response))
 

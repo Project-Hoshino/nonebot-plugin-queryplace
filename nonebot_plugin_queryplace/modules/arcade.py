@@ -259,19 +259,35 @@ class ArcadeData:
         except Exception as e:
             logger.error(f"保存机厅数据失败：{e}")
 
-    def find_arcade_by_alias(self, name_or_alias: str) -> tuple[Optional[Dict[str, Any]], str]:
-        """查找机厅并返回匹配的别名（如果有的话）"""
+    def find_arcade_by_alias(self, name_or_alias: str, group_id: Optional[str] = None) -> tuple[Optional[Dict[str, Any]], str]:
+        """
+        查找机厅，优先查找当前群组订阅的机厅。
+        返回匹配的机厅和所用的别名。
+        """
+        # 如果提供了 group_id，首先在订阅的机厅中查找
+        if group_id:
+            for arcade in self.arcades:
+                if isinstance(arcade, dict):
+                    # 检查是否在当前群组中
+                    if int(group_id) in arcade.get('group', []):
+                        if arcade.get('name') == name_or_alias:
+                            return arcade, arcade['name']
+                        if name_or_alias in arcade.get('alias', []):
+                            return arcade, name_or_alias
+        
+        # 如果没有提供 group_id，或者在订阅的机厅中没找到，则在所有机厅中查找
         for arcade in self.arcades:
-            if isinstance(arcade, dict):  # 确保是字典
+            if isinstance(arcade, dict):
                 if arcade.get('name') == name_or_alias:
                     return arcade, arcade['name']
                 if name_or_alias in arcade.get('alias', []):
                     return arcade, name_or_alias
+        
         return None, name_or_alias
 
-    def find_arcade(self, name_or_alias: str) -> Optional[Dict[str, Any]]:
+    def find_arcade(self, name_or_alias: str, group_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """查找机厅"""
-        arcade, _ = self.find_arcade_by_alias(name_or_alias)
+        arcade, _ = self.find_arcade_by_alias(name_or_alias, group_id=group_id)
         return arcade
 
     def is_subscribed(self, group_id: str, arcade_name: str) -> bool:

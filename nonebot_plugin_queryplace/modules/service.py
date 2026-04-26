@@ -62,11 +62,11 @@ def _has_today_activity(arcade_name: str) -> bool:
     return False
 
 
-def _normalize_place(place: str) -> str:
+def _normalize_place(place: str, group_id: Optional[str] = None) -> str:
     """标准化地点名称"""
     place = place.strip()
     # Try to find by name or alias
-    arcade = arcade_data.find_arcade(place)
+    arcade = arcade_data.find_arcade(place, group_id=group_id)
     if arcade:
         return arcade['name']
     return place
@@ -99,10 +99,10 @@ def _response_for_update(place: str, old_count: int, new_count: int,
     return f"更新成功！{summary}\n{display_name}现在{_format_count_with_avg(new_count, arcade)}"
 
 
-async def _query_place(place: str, original_input: str) -> Optional[str]:
+async def _query_place(place: str, original_input: str, group_id: Optional[str] = None) -> Optional[str]:
     """查询单个机厅"""
-    place = _normalize_place(place)
-    arcade, matched_alias = arcade_data.find_arcade_by_alias(original_input)
+    place = _normalize_place(place, group_id=group_id)
+    arcade, matched_alias = arcade_data.find_arcade_by_alias(original_input, group_id=group_id)
     if not arcade:
         return None
 
@@ -283,9 +283,9 @@ def _query_all(group_id: str) -> Optional[str]:
     return "\n".join(lines)
 
 
-def _query_history(place: str) -> Optional[str]:
+def _query_history(place: str, group_id: Optional[str] = None) -> Optional[str]:
     """查询机厅历史记录"""
-    place = _normalize_place(place)  # 将别名转换为正式名称
+    place = _normalize_place(place, group_id=group_id)  # 将别名转换为正式名称
     arcade = arcade_data.find_arcade(place)
     if not arcade:
         return
@@ -318,10 +318,10 @@ def _query_history(place: str) -> Optional[str]:
     return "\n".join(lines)
 
 
-def _query_location(place: str) -> Optional[str]:
+def _query_location(place: str, group_id: Optional[str] = None) -> Optional[str]:
     """查询机厅地址信息"""
     original_place = place
-    place = _normalize_place(place)  # 将别名转换为正式名称
+    place = _normalize_place(place, group_id=group_id)  # 将别名转换为正式名称
     arcade = arcade_data.find_arcade(place)
     if not arcade:
         return
@@ -343,7 +343,7 @@ def _query_location(place: str) -> Optional[str]:
 async def _apply_delta(place: str, delta: int, user_name: str = "", 
                  action_type: str = "add", group_id: str = "") -> Optional[str]:
     """应用增量更新"""
-    place = _normalize_place(place)
+    place = _normalize_place(place, group_id=group_id)
     arcade = arcade_data.find_arcade(place)
     if not arcade:
         return None
@@ -391,7 +391,7 @@ async def _set_single_count(place: str, count: int, user_name: str = "",
     """设置单个机厅的卡数"""
     if count < 0:
         return None
-    place = _normalize_place(place)
+    place = _normalize_place(place, group_id=group_id)
     arcade = arcade_data.find_arcade(place)
     if not arcade:
         return None
