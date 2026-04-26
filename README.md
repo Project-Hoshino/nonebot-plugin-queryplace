@@ -9,7 +9,7 @@
 </p>
 
 # NoneBot-Plugin-QueryPlace
-_✨ 一款深度集成 [Nearcade](https://nearcade.phizone.cn/) 的机厅排卡插件 for NoneBot2 ✨_
+_✨ 机厅排卡插件 for NoneBot2 ✨_
   
 <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="python">
 <a href="./LICENSE">
