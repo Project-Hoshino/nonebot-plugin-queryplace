@@ -207,9 +207,6 @@ def _query_all(group_id: str) -> Optional[str]:
     if not updated_arcades:
         return "今天还没有人更新卡数，望周知"
 
-    # 对已更新的机厅按人数降序排序
-    updated_arcades.sort(key=lambda x: x.get('person', 0), reverse=True)
-
     for arcade in updated_arcades:
         person = arcade.get('person', 0)
         time_str = arcade.get('time', '')
