@@ -186,98 +186,58 @@ def _query_all(group_id: str) -> Optional[str]:
     lines: List[str] = []
     total = 0
     found_any = False
-    updated_count = 0  # 已更新的机厅数量
-    zero_count = 0     # 为 0 的机厅数量
-    no_activity_count = 0  # 无活动的机厅数量
-    
+    updated_arcades = []
+    no_activity_arcades = []
+
     for arcade in arcade_data.arcades:
-        # 确保 arcade 是字典
-        if not isinstance(arcade, dict):
+        if not isinstance(arcade, dict) or int(group_id) not in arcade.get('group', []):
             continue
-            
-        # 检查该机厅是否被该群订阅
-        if int(group_id) not in arcade.get('group', []):
-            continue
-        
+
         found_any = True
+        is_today = _is_same_day(arcade.get('time', ''))
+
+        if is_today:
+            updated_arcades.append(arcade)
+        else:
+            no_activity_arcades.append(arcade)
+
+    if not found_any:
+        return None
+
+    if not updated_arcades:
+        return "今天还没有人更新卡数，望周知"
+
+    # 对已更新的机厅按人数降序排序
+    updated_arcades.sort(key=lambda x: x.get('person', 0), reverse=True)
+
+    for arcade in updated_arcades:
         person = arcade.get('person', 0)
         time_str = arcade.get('time', '')
-        
-        # 检查是否为当天更新
-        is_today = _is_same_day(time_str) if time_str else False
-        # 检查今天是否有活动
-        has_activity = _has_today_activity(arcade['name'])
-        
-        # 格式化时间显示
+        display_name = arcade['name']
         time_display = ""
-        if time_str and is_today:
+        if time_str:
             try:
                 dt = datetime.fromisoformat(time_str)
                 time_display = dt.strftime("%H:%M:%S")
             except:
-                # 如果解析失败，尝试提取时间部分
                 if "T" in time_str:
-                    time_part = time_str.split("T")[1].split(".")[0]
-                    time_display = time_part
-                else:
-                    time_display = time_str
-        
-        # 使用完整机厅名称作为显示名称
-        display_name = arcade['name']
-        
-        # 如果今天没有活动，则视为未更新
-        if not has_activity:
-            no_activity_count += 1
-        elif is_today and person > 0:
-            # 有活动且人数大于 0
-            updated_count += 1
-            if time_display:
-                lines.append(f"{display_name}: {_format_count_with_avg(person, arcade)} ({time_display})")
-            else:
-                lines.append(f"{display_name}: {_format_count_with_avg(person, arcade)}")
-            total += person
-        elif is_today and person == 0:
-            # 有活动但人数为 0
-            updated_count += 1
-            if time_display:
-                lines.append(f"{display_name}: {_format_count_with_avg(person, arcade)} ({time_display})")
-            else:
-                lines.append(f"{display_name}: {_format_count_with_avg(person, arcade)}")
-            total += person
-    
-    if not found_any:
-        return None
-    
-    # 如果所有已订阅的机厅都没有活动，则显示统一提示
-    if updated_count == 0:
-        return "今天还没有人更新卡数，望周知"
-    
-    # 检查是否需要显示全部机厅（10 秒内再次查询）
+                    time_display = time_str.split("T")[1].split(".")[0]
+
+        lines.append(f"{display_name}: {_format_count_with_avg(person, arcade)} ({time_display})")
+        total += person
+
     show_all = query_cache.should_show_all(group_id)
     
-    # 如果不需要显示全部，且有未活动的机厅，则只显示有活动的并提示剩余
-    if not show_all and no_activity_count > 0:
-        lines.append(f"...其余{no_activity_count}个：今日未更新 (10 秒内再查以显示)")
-    elif no_activity_count > 0:  # 如果需要显示全部，则显示所有机厅
-        # 显示所有未活动的机厅
-        for arcade in arcade_data.arcades:
-            if not isinstance(arcade, dict):
-                continue
-                
-            if int(group_id) not in arcade.get('group', []):
-                continue
-                
-            # 检查今天是否有活动
-            has_activity = _has_today_activity(arcade['name'])
-            
-            if not has_activity:  # 未活动的机厅
-                display_name = arcade['name']
-                lines.append(f"{display_name}: 今日未更新")
-    
+    if no_activity_arcades:
+        if show_all:
+            for arcade in no_activity_arcades:
+                lines.append(f"{arcade['name']}: 今日未更新")
+        else:
+            lines.append(f"...其余{len(no_activity_arcades)}个：今日未更新 (10 秒内再查以显示)")
+
     lines.append(f"出勤总人数：{total}")
     lines.append("发送 \"<机厅名>++\" \"<机厅名>+数字\" 加卡，\"<机厅名>--\" \"<机厅名>-数字\" 减卡，\"<机厅名>=数字\" \"<机厅名>数字\" 设置卡数")
     
-    # 更新查询时间戳，下次查询将在 10 秒内显示全部
     query_cache.update_query_time(group_id)
     
     return "\n".join(lines)
