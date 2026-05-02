@@ -95,7 +95,7 @@ async def load_data():
     await arcade_data.load_arcades()
     history_data.load_history()
     # 启动时检查是否需要重置数据
-    await arcade_data.check_and_reset_if_needed()
+    arcade_data.check_and_reset_if_needed()
 
 
 @scheduler.scheduled_job("cron", hour=4, minute=0, id="reset_daily_data")
