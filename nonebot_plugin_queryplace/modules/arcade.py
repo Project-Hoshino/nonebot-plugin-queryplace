@@ -344,60 +344,47 @@ class ArcadeData:
             logger.error(f"无法保存最后重置时间：{e}")
 
     def check_and_reset_if_needed(self):
-        """检查是否需要重置数据（基于文件修改时间）"""
-        # 检查最后重置时间文件是否存在
-        if self.last_reset_time_file.exists():
-            try:
-                with open(self.last_reset_time_file, 'r', encoding='utf-8') as f:
-                    last_reset_str = f.read().strip()
-                    last_reset = datetime.fromisoformat(last_reset_str)
-                    # 如果最后重置时间不是今天，则重置
-                    if last_reset.date() != datetime.now().date():
-                        logger.info(f"检测到上次重置时间是 {last_reset.date()}，今天是 {datetime.now().date()}，需要重置数据")
-                        self.reset_daily_data()
-                        return True
-            except Exception as e:
-                logger.error(f"读取最后重置时间失败：{e}")
-        else:
-            # 如果没有记录重置时间的文件，说明可能是首次运行或文件丢失
-            # 检查当前数据中是否有昨天的数据
-            has_old_data = False
-            for arcade in self.arcades:
-                if isinstance(arcade, dict) and arcade.get('time'):
-                    try:
-                        time_obj = datetime.fromisoformat(arcade['time'])
-                        if time_obj.date() < datetime.now().date():
-                            has_old_data = True
-                            break
-                    except:
-                        pass
-            
-            if has_old_data:
-                logger.info("检测到存在旧数据，执行重置")
-                self.reset_daily_data()
-                return True
-        
-        # 检查是否有今天凌晨 4 点之后的旧数据
+        """检查是否需要重置数据，在机器人启动时调用"""
+        from datetime import datetime, timedelta
+
         now = datetime.now()
-        # 如果当前时间是 4 点之后，且有今天 4 点之前的数据，则重置
-        if now.hour >= 4:
-            has_old_data = False
-            for arcade in self.arcades:
-                if isinstance(arcade, dict) and arcade.get('time'):
-                    try:
-                        time_obj = datetime.fromisoformat(arcade['time'])
-                        # 检查是否是今天的日期，但是早于 4 点
-                        if time_obj.date() == now.date() and time_obj.hour < 4:
-                            has_old_data = True
-                            break
-                    except:
-                        pass
-            
-            if has_old_data:
-                logger.info("检测到今天 4 点前的旧数据，执行重置")
-                self.reset_daily_data()
-                return True
+        # 定义游戏日：从凌晨 4 点到次日凌晨 4 点
+        if now.hour < 4:
+            # 如果当前时间在凌晨 4 点之前，则游戏日属于前一天
+            current_game_day = (now - timedelta(days=1)).date()
+        else:
+            # 否则，游戏日属于当天
+            current_game_day = now.date()
+
+        # 检查是否有任何机厅的数据需要重置
+        should_reset = False
+        for arcade in self.arcades:
+            if isinstance(arcade, dict) and arcade.get('time'):
+                try:
+                    time_obj = datetime.fromisoformat(arcade['time'])
+                    
+                    # 计算数据所属的游戏日
+                    if time_obj.hour < 4:
+                        data_game_day = (time_obj - timedelta(days=1)).date()
+                    else:
+                        data_game_day = time_obj.date()
+
+                    # 如果数据所属的游戏日早于当前游戏日，则需要重置
+                    if data_game_day < current_game_day:
+                        should_reset = True
+                        break  # 只要有一个需要重置，就跳出循环
+
+                except (ValueError, TypeError):
+                    # 时间格式错误或类型不匹配，可以记录日志或忽略
+                    logger.warning(f"机厅 '{arcade.get('name', '未知')}' 的时间格式无效，跳过检查。")
+                    continue
+
+        if should_reset:
+            logger.info("检测到存在旧的游戏日数据，将执行每日数据重置。")
+            self.reset_daily_data()
+            return True
         
+        logger.info("所有数据均为当前游戏日，无需重置。")
         return False
     
     def add_arcade(self, arcade_dict: Dict[str, Any]):

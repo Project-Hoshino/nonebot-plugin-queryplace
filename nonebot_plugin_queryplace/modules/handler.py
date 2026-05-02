@@ -89,59 +89,13 @@ def _is_admin(event: GroupMessageEvent) -> bool:
     except Exception:
         return False
 
-
-def _check_and_reset_daily_data():
-    """检查是否需要重置每日数据"""
-    from datetime import datetime, timedelta
-    
-    now = datetime.now()
-    # 如果当前时间是 4 点之后，且上次更新时间在 4 点之前，则重置数据
-    if now.hour >= 4:
-        # 检查是否有过期的数据需要重置
-        should_reset = False
-        for arcade in arcade_data.arcades:
-            if isinstance(arcade, dict) and arcade.get('time'):
-                try:
-                    time_obj = datetime.fromisoformat(arcade['time'])
-                    # 如果记录的时间是昨天或更早的日期（按游戏日计算），则重置
-                    if time_obj.hour >= 4:
-                        # 更新时间 >= 4 点，属于当天的游戏日
-                        update_game_day = time_obj.date()
-                    else:
-                        # 更新时间 < 4 点，属于前一天的游戏日
-                        update_game_day = (time_obj - timedelta(days=1)).date()
-                    
-                    # 当前时间的游戏日
-                    if now.hour >= 4:
-                        current_game_day = now.date()
-                    else:
-                        current_game_day = (now - timedelta(days=1)).date()
-                    
-                    # 如果更新的游戏日不是当前游戏日，则需要重置
-                    if update_game_day < current_game_day:
-                        should_reset = True
-                        break
-                except:
-                    pass
-        if should_reset:
-            arcade_data.reset_daily_data()
-    
-    current_day_key = _get_current_day_key()
-    if history_data.last_reset_date != current_day_key:
-        if history_data.last_reset_date is not None and history_data.last_reset_date != current_day_key:
-            history_data.history = {}
-            logger.info(f"清空历史记录，从 {history_data.last_reset_date} 到 {current_day_key}")
-        history_data.last_reset_date = current_day_key
-        history_data.save_history()
-
-
 @driver.on_startup
 async def load_data():
     """启动时加载数据"""
     await arcade_data.load_arcades()
     history_data.load_history()
     # 启动时检查是否需要重置数据
-    arcade_data.check_and_reset_if_needed()
+    await arcade_data.check_and_reset_if_needed()
 
 
 @scheduler.scheduled_job("cron", hour=4, minute=0, id="reset_daily_data")
@@ -163,7 +117,6 @@ help_matcher = on_command("help q", aliases={"帮助排卡", "排卡帮助", "he
 @help_matcher.handle()
 async def handle_help(bot: Bot, event: GroupMessageEvent) -> None:
     """处理帮助命令"""
-    _check_and_reset_daily_data()
     help_text = _help_text()
     img = text_to_image(help_text)
     base64_img = image_to_base64(img)
@@ -176,7 +129,6 @@ list_matcher = on_command("机厅列表", priority=10, block=True)
 @list_matcher.handle()
 async def handle_list(bot: Bot, event: GroupMessageEvent) -> None:
     """处理机厅列表命令"""
-    _check_and_reset_daily_data()
     group_id = str(event.group_id)
     list_text = _format_arcade_list(group_id)
     await list_matcher.finish(_reply_text(event, list_text))
@@ -188,7 +140,6 @@ all_query_matcher = on_regex(ALL_QUERY_PATTERN, priority=5, block=True)
 @all_query_matcher.handle()
 async def handle_all_query(bot: Bot, event: GroupMessageEvent) -> None:
     """处理查询所有机厅命令"""
-    _check_and_reset_daily_data()
     group_id = str(event.group_id)
     response = _query_all(group_id)
     if response:
@@ -201,7 +152,6 @@ subscribe_matcher = on_regex(SUBSCRIBE_REGEX_PATTERN, priority=10, block=True)
 @subscribe_matcher.handle()
 async def handle_subscribe(bot: Bot, event: GroupMessageEvent) -> None:
     """处理订阅机厅命令"""
-    _check_and_reset_daily_data()
     if not _is_admin(event):
         await subscribe_matcher.finish(_reply_text(event, "权限不足：仅群管理员可订阅机厅"))
         return
@@ -220,7 +170,6 @@ unsubscribe_matcher = on_regex(UNSUBSCRIBE_REGEX_PATTERN, priority=10, block=Tru
 @unsubscribe_matcher.handle()
 async def handle_unsubscribe(bot: Bot, event: GroupMessageEvent) -> None:
     """处理取消订阅机厅命令"""
-    _check_and_reset_daily_data()
     if not _is_admin(event):
         await unsubscribe_matcher.finish(_reply_text(event, "权限不足：仅群管理员可取消订阅机厅"))
         return
@@ -239,7 +188,6 @@ add_alias_matcher = on_regex(ADD_ALIAS_PATTERN, priority=10, block=True)
 @add_alias_matcher.handle()
 async def handle_add_alias(bot: Bot, event: GroupMessageEvent) -> None:
     """处理添加别名命令"""
-    _check_and_reset_daily_data()
     if not _is_admin(event):
         await add_alias_matcher.finish(_reply_text(event, "权限不足：仅群管理员可添加别名"))
         return
@@ -257,7 +205,6 @@ del_alias_matcher = on_regex(DEL_ALIAS_PATTERN, priority=10, block=True)
 @del_alias_matcher.handle()
 async def handle_del_alias(bot: Bot, event: GroupMessageEvent) -> None:
     """处理删除别名命令"""
-    _check_and_reset_daily_data()
     if not _is_admin(event):
         await del_alias_matcher.finish(_reply_text(event, "权限不足：仅群管理员可删除别名"))
         return
@@ -275,7 +222,6 @@ add_arcade_matcher = on_regex(ADD_ARCADE_PATTERN, priority=10, block=True)
 @add_arcade_matcher.handle()
 async def handle_add_arcade(bot: Bot, event: GroupMessageEvent) -> None:
     """处理添加机厅命令"""
-    _check_and_reset_daily_data()
     if not _is_admin(event):
         await add_arcade_matcher.finish(_reply_text(event, "权限不足：仅群管理员可添加机厅"))
         return
@@ -293,7 +239,6 @@ delete_arcade_matcher = on_regex(DELETE_ARCADE_PATTERN, priority=10, block=True)
 @delete_arcade_matcher.handle()
 async def handle_delete_arcade(bot: Bot, event: GroupMessageEvent) -> None:
     """处理删除机厅命令"""
-    _check_and_reset_daily_data()
     if not _is_admin(event):
         await delete_arcade_matcher.finish(_reply_text(event, "权限不足：仅群管理员可删除机厅"))
         return
@@ -311,7 +256,6 @@ find_arcade_matcher = on_regex(FIND_ARCADE_PATTERN, priority=10, block=True)
 @find_arcade_matcher.handle()
 async def handle_find_arcade(bot: Bot, event: GroupMessageEvent) -> None:
     """处理查找机厅命令"""
-    _check_and_reset_daily_data()
     text = str(event.get_message()).strip()
     match = re.match(FIND_ARCADE_PATTERN, text)
     if match:
@@ -328,7 +272,6 @@ find_nearcade_id_matcher = on_regex(FIND_NEARCAADE_ID_PATTERN, priority=10, bloc
 @find_nearcade_id_matcher.handle()
 async def handle_find_nearcade_id(bot: Bot, event: GroupMessageEvent) -> None:
     """处理查机厅id命令"""
-    _check_and_reset_daily_data()
     text = str(event.get_message()).strip()
     match = re.match(FIND_NEARCAADE_ID_PATTERN, text)
     if match:
@@ -358,7 +301,6 @@ bind_nearcade_id_matcher = on_regex(BIND_NEARCAADE_ID_PATTERN, priority=10, bloc
 @bind_nearcade_id_matcher.handle()
 async def handle_bind_nearcade_id(bot: Bot, event: GroupMessageEvent) -> None:
     """处理绑定机厅id命令"""
-    _check_and_reset_daily_data()
     if not _is_admin(event):
         await bind_nearcade_id_matcher.finish(_reply_text(event, "权限不足：仅群管理员可绑定机厅ID"))
         return
@@ -377,7 +319,6 @@ single_query_matcher = on_regex(SINGLE_QUERY_PATTERN, priority=10, block=True)
 @single_query_matcher.handle()
 async def handle_single_query(bot: Bot, event: GroupMessageEvent) -> None:
     """处理查询单个机厅人数命令"""
-    _check_and_reset_daily_data()
     group_id = str(event.group_id)
     text = str(event.get_message()).strip()
     match = re.match(SINGLE_QUERY_PATTERN, text)
@@ -394,7 +335,6 @@ history_location_matcher = on_regex(HISTORY_LOCATION_PATTERN, priority=10, block
 @history_location_matcher.handle()
 async def handle_history_location(bot: Bot, event: GroupMessageEvent) -> None:
     """处理查询历史记录和地址命令"""
-    _check_and_reset_daily_data()
     group_id = str(event.group_id)
     text = str(event.get_message()).strip()
     match = re.match(HISTORY_LOCATION_PATTERN, text)
@@ -414,7 +354,6 @@ subtract_matcher = on_regex(SUBTRACT_PATTERN, priority=10, block=True)
 @subtract_matcher.handle()
 async def handle_subtract(bot: Bot, event: GroupMessageEvent) -> None:
     """处理减少指定数量命令"""
-    _check_and_reset_daily_data()
     group_id = str(event.group_id)
     user_name = event.sender.nickname or str(event.user_id)
     text = str(event.get_message()).strip()
@@ -433,7 +372,6 @@ add_matcher = on_regex(ADD_PATTERN, priority=10, block=True)
 @add_matcher.handle()
 async def handle_add(bot: Bot, event: GroupMessageEvent) -> None:
     """处理增加指定数量命令"""
-    _check_and_reset_daily_data()
     group_id = str(event.group_id)
     user_name = event.sender.nickname or str(event.user_id)
     text = str(event.get_message()).strip()
@@ -452,7 +390,6 @@ increment_matcher = on_regex(INCREMENT_PATTERN, priority=10, block=True)
 @increment_matcher.handle()
 async def handle_increment(bot: Bot, event: GroupMessageEvent) -> None:
     """处理增加 1 命令"""
-    _check_and_reset_daily_data()
     group_id = str(event.group_id)
     user_name = event.sender.nickname or str(event.user_id)
     text = str(event.get_message()).strip()
@@ -470,7 +407,6 @@ decrement_matcher = on_regex(DECREMENT_PATTERN, priority=10, block=True)
 @decrement_matcher.handle()
 async def handle_decrement(bot: Bot, event: GroupMessageEvent) -> None:
     """处理减少 1 命令"""
-    _check_and_reset_daily_data()
     group_id = str(event.group_id)
     user_name = event.sender.nickname or str(event.user_id)
     text = str(event.get_message()).strip()
@@ -488,7 +424,6 @@ set_equal_matcher = on_regex(SET_EQUAL_PATTERN, priority=10, block=True)
 @set_equal_matcher.handle()
 async def handle_set_equal(bot: Bot, event: GroupMessageEvent) -> None:
     """处理设置为指定值 (=) 命令"""
-    _check_and_reset_daily_data()
     group_id = str(event.group_id)
     user_name = event.sender.nickname or str(event.user_id)
     text = str(event.get_message()).strip()
@@ -507,7 +442,6 @@ set_direct_matcher = on_regex(SET_DIRECT_PATTERN, priority=10, block=True)
 @set_direct_matcher.handle()
 async def handle_set_direct(bot: Bot, event: GroupMessageEvent) -> None:
     """处理设置为指定值 (直接数字) 命令"""
-    _check_and_reset_daily_data()
     group_id = str(event.group_id)
     user_name = event.sender.nickname or str(event.user_id)
     text = str(event.get_message()).strip()
