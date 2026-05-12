@@ -180,7 +180,7 @@ def _format_count_with_avg(person: int, arcade: Optional[Dict[str, Any]] = None)
     count_str = f"{person}卡"
     if arcade and MACHINE_CALC_MODE != "off":
         machine_count = _get_machine_count(arcade)
-        if machine_count > 1:
+        if person > 1 and machine_count > 1:
             avg = person // machine_count
             count_str += f" 机均{avg}卡"
     return count_str
