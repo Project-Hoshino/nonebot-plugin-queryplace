@@ -30,8 +30,8 @@ async def search_nearcade_shops(keyword: str, page: int = 1, limit: int = 5) -> 
 
     try:
         encoded_query = urllib.parse.quote(keyword)
-        # url = f"https://nearcade.phizone.cn/api/shops?q={encoded_query}&page={page}&limit={limit}"
-        url = f"https://nearcade.phizone.cn/api/shops?q={encoded_query}&limit=1000"
+        # url = f"https://nearcade.cn/api/shops?q={encoded_query}&page={page}&limit={limit}"
+        url = f"https://nearcade.cn/api/shops?q={encoded_query}&limit=1000"
         
         headers = {
             'User-Agent': 'Mozilla/5.0 (compatible; NoneBot-QueryPlace-Plugin)',
@@ -75,7 +75,7 @@ async def update_nearcade_attendance(shop_id: str, count: int) -> bool:
     try:
         async with httpx.AsyncClient() as client:
             # Step 1: Get game_id from the bemanicn-specific endpoint
-            get_url = f"https://nearcade.phizone.cn/api/shops/bemanicn/{shop_id}"
+            get_url = f"https://nearcade.cn/api/shops/bemanicn/{shop_id}"
             get_response = await client.get(get_url, headers=headers)
             get_response.raise_for_status()
             
@@ -92,7 +92,7 @@ async def update_nearcade_attendance(shop_id: str, count: int) -> bool:
                 return False
 
             # Step 2: Post attendance with game_id
-            post_url = f"https://nearcade.phizone.cn/api/shops/bemanicn/{shop_id}/attendance"
+            post_url = f"https://nearcade.cn/api/shops/bemanicn/{shop_id}/attendance"
             payload = {
                 "games": [
                     {"id": game_id, "currentAttendances": count}
@@ -123,7 +123,7 @@ async def get_nearcade_attendance(shop_id: str) -> Dict[str, Any] | None:
     Returns:
         一个包含 'count', 'time', 'user' 的字典，如果失败则返回 None
     """
-    url = f"https://nearcade.phizone.cn/api/shops/bemanicn/{shop_id}/attendance"
+    url = f"https://nearcade.cn/api/shops/bemanicn/{shop_id}/attendance"
     headers = {
         'User-Agent': 'Mozilla/5.0 (compatible; NoneBot-QueryPlace-Plugin)',
         'Accept': 'application/json'

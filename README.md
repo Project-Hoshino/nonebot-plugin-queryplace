@@ -22,7 +22,7 @@ _✨ 机厅排卡插件 for NoneBot2 ✨_
 
 这是一个为 NoneBot2 设计的机厅人数查询插件，主要服务于舞萌DX、中二节奏等街机音游玩家群体。
 
-本插件支持向 [Nearcade](https://nearcade.phizone.cn/) 上报与同步机厅人数数据。
+本插件支持向 [Nearcade](https://nearcade.cn/) 上报与同步机厅人数数据。
 
 ## 安装方法
 
@@ -42,7 +42,7 @@ _✨ 机厅排卡插件 for NoneBot2 ✨_
 | :--- | :--- | :--- | :--- |
 | `machine_calc_mode` | 在查询机厅人数计算平均人数时所依据的机台类型。 | `mai`（舞萌DX）, `chu`（中二节奏）， `all` | `all` |
 | `use_online_database` | 启动时是否从华立的官网机台列表拉取最新的机厅列表。 | `true`, `false` | `true` |
-| `nearcade_token` | 用于通过指令向 Nearcade **上报**人数的 API 令牌。 | 你的 Nearcade 令牌，注册Nearcade账号后从[这里](https://nearcade.phizone.cn/settings/api-tokens)获取 | [nonebot_plugin_mai_arcade](https://github.com/YuuzukiRin/nonebot_plugin_mai_arcade)中的[默认Token](https://github.com/YuuzukiRin/nonebot_plugin_mai_arcade/blob/1e9413c9a0bf49ba608edacf2878ae1af6a0ff1a/nonebot_plugin_mai_arcade/handlers/count.py#L174) |
+| `nearcade_token` | 用于通过指令向 Nearcade **上报**人数的 API 令牌。 | 你的 Nearcade 令牌，注册Nearcade账号后从[这里](https://nearcade.cn/settings/api-tokens)获取 | [nonebot_plugin_mai_arcade](https://github.com/YuuzukiRin/nonebot_plugin_mai_arcade)中的[默认Token](https://github.com/YuuzukiRin/nonebot_plugin_mai_arcade/blob/1e9413c9a0bf49ba608edacf2878ae1af6a0ff1a/nonebot_plugin_mai_arcade/handlers/count.py#L174) |
 
 ### `arcades.json`/`arcades-local.json` 文件配置
 
@@ -72,7 +72,7 @@ _✨ 机厅排卡插件 for NoneBot2 ✨_
 }
 ```
 
-- **`nearcade_id`**: 在 [Nearcade](https://nearcade.phizone.cn/) 上的机厅 ID。**配置此项后，插件才能自动同步和上报该机厅的数据。**
+- **`nearcade_id`**: 在 [Nearcade](https://nearcade.cn/) 上的机厅 ID。**配置此项后，插件才能自动同步和上报该机厅的数据。**
 - **`name`**: 机厅的官方名称。
 - **`alias`**: 机厅的别名列表，用户可以通过别名进行查询和操作。
 - **`group`**: 已订阅该机厅的群号列表。
