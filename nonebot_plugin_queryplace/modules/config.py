@@ -23,6 +23,8 @@ NEARCADE_TOKEN = getattr(plugin_config, "nearcade_token",
 
 MACHINE_CALC_MODE = getattr(plugin_config, "machine_calc_mode", "all") or "all"
 
+NEARCADE_COMMENT = getattr(plugin_config, "nearcade_comment", "") or ""
+
 
 def _parse_bool(value: Any, default: bool = True) -> bool:
     """解析布尔值配置"""

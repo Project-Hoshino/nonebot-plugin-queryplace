@@ -10,7 +10,7 @@ from datetime import datetime, timezone, timedelta
 
 from nonebot.log import logger
 
-from .config import NEARCADE_TOKEN
+from .config import NEARCADE_TOKEN, NEARCADE_COMMENT
 
 
 async def search_nearcade_shops(keyword: str, page: int = 1, limit: int = 5) -> Dict[str, Any]:
@@ -98,7 +98,8 @@ async def update_nearcade_attendance(shop_id: str, count: int) -> bool:
             payload = {
                 "games": [
                     {"id": game_id, "currentAttendances": count}
-                ]
+                ],
+                "comment": NEARCADE_COMMENT
             }
 
             post_response = await client.post(post_url, headers=headers, json=payload)
