@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 from nonebot.log import logger
-from nonebot import on_command, on_regex, get_driver, require
+from nonebot import on_command, on_regex
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, MessageSegment
 from nonebot_plugin_apscheduler import scheduler
 
@@ -19,15 +19,12 @@ from .config import (
 from .arcade import arcade_data
 from .history import history_data
 from .service import (
-    query_cache,
     _query_all,
     _query_place,
     _query_history,
     _query_location,
     _apply_delta,
     _set_single_count,
-    _subscribe_arcade,
-    _unsubscribe_arcade,
     _add_alias,
     _del_alias,
     _find_arcades,
@@ -71,8 +68,6 @@ FIND_NEARCAADE_ID_PATTERN = r"^查机厅id\s+(.+)$"
 BIND_NEARCAADE_ID_PATTERN = r"^绑定机厅id\s+(.+?)\s+(\d+)$"
 
 
-
-
 def _reply_text(event: GroupMessageEvent, text: str) -> MessageSegment:
     """生成回复消息"""
     return MessageSegment.reply(event.message_id) + text
@@ -88,6 +83,7 @@ def _is_admin(event: GroupMessageEvent) -> bool:
         return str(event.user_id) in superusers
     except Exception:
         return False
+
 
 @driver.on_startup
 async def load_data():
@@ -112,7 +108,9 @@ async def reset_daily_data():
 
 
 # 帮助命令
-help_matcher = on_command("help q", aliases={"帮助排卡", "排卡帮助", "help 排卡", "help queue"}, priority=10, block=True)
+help_matcher = on_command("help q", aliases={
+                          "帮助排卡", "排卡帮助", "help 排卡", "help queue"}, priority=10, block=True)
+
 
 @help_matcher.handle()
 async def handle_help(bot: Bot, event: GroupMessageEvent) -> None:
@@ -126,6 +124,7 @@ async def handle_help(bot: Bot, event: GroupMessageEvent) -> None:
 # 机厅列表命令
 list_matcher = on_command("机厅列表", priority=10, block=True)
 
+
 @list_matcher.handle()
 async def handle_list(bot: Bot, event: GroupMessageEvent) -> None:
     """处理机厅列表命令"""
@@ -136,6 +135,7 @@ async def handle_list(bot: Bot, event: GroupMessageEvent) -> None:
 
 # 查询所有机厅命令
 all_query_matcher = on_regex(ALL_QUERY_PATTERN, priority=5, block=True)
+
 
 @all_query_matcher.handle()
 async def handle_all_query(bot: Bot, event: GroupMessageEvent) -> None:
@@ -148,6 +148,7 @@ async def handle_all_query(bot: Bot, event: GroupMessageEvent) -> None:
 
 # 订阅机厅命令
 subscribe_matcher = on_regex(SUBSCRIBE_REGEX_PATTERN, priority=10, block=True)
+
 
 @subscribe_matcher.handle()
 async def handle_subscribe(bot: Bot, event: GroupMessageEvent) -> None:
@@ -165,7 +166,9 @@ async def handle_subscribe(bot: Bot, event: GroupMessageEvent) -> None:
 
 
 # 取消订阅机厅命令
-unsubscribe_matcher = on_regex(UNSUBSCRIBE_REGEX_PATTERN, priority=10, block=True)
+unsubscribe_matcher = on_regex(
+    UNSUBSCRIBE_REGEX_PATTERN, priority=10, block=True)
+
 
 @unsubscribe_matcher.handle()
 async def handle_unsubscribe(bot: Bot, event: GroupMessageEvent) -> None:
@@ -185,6 +188,7 @@ async def handle_unsubscribe(bot: Bot, event: GroupMessageEvent) -> None:
 # 添加别名命令
 add_alias_matcher = on_regex(ADD_ALIAS_PATTERN, priority=10, block=True)
 
+
 @add_alias_matcher.handle()
 async def handle_add_alias(bot: Bot, event: GroupMessageEvent) -> None:
     """处理添加别名命令"""
@@ -201,6 +205,7 @@ async def handle_add_alias(bot: Bot, event: GroupMessageEvent) -> None:
 
 # 删除别名命令
 del_alias_matcher = on_regex(DEL_ALIAS_PATTERN, priority=10, block=True)
+
 
 @del_alias_matcher.handle()
 async def handle_del_alias(bot: Bot, event: GroupMessageEvent) -> None:
@@ -219,6 +224,7 @@ async def handle_del_alias(bot: Bot, event: GroupMessageEvent) -> None:
 # 添加机厅命令
 add_arcade_matcher = on_regex(ADD_ARCADE_PATTERN, priority=10, block=True)
 
+
 @add_arcade_matcher.handle()
 async def handle_add_arcade(bot: Bot, event: GroupMessageEvent) -> None:
     """处理添加机厅命令"""
@@ -234,7 +240,9 @@ async def handle_add_arcade(bot: Bot, event: GroupMessageEvent) -> None:
 
 
 # 删除机厅命令
-delete_arcade_matcher = on_regex(DELETE_ARCADE_PATTERN, priority=10, block=True)
+delete_arcade_matcher = on_regex(
+    DELETE_ARCADE_PATTERN, priority=10, block=True)
+
 
 @delete_arcade_matcher.handle()
 async def handle_delete_arcade(bot: Bot, event: GroupMessageEvent) -> None:
@@ -253,6 +261,7 @@ async def handle_delete_arcade(bot: Bot, event: GroupMessageEvent) -> None:
 # 查找机厅命令
 find_arcade_matcher = on_regex(FIND_ARCADE_PATTERN, priority=10, block=True)
 
+
 @find_arcade_matcher.handle()
 async def handle_find_arcade(bot: Bot, event: GroupMessageEvent) -> None:
     """处理查找机厅命令"""
@@ -267,7 +276,9 @@ async def handle_find_arcade(bot: Bot, event: GroupMessageEvent) -> None:
 
 
 # 查机厅id命令
-find_nearcade_id_matcher = on_regex(FIND_NEARCAADE_ID_PATTERN, priority=10, block=True)
+find_nearcade_id_matcher = on_regex(
+    FIND_NEARCAADE_ID_PATTERN, priority=10, block=True)
+
 
 @find_nearcade_id_matcher.handle()
 async def handle_find_nearcade_id(bot: Bot, event: GroupMessageEvent) -> None:
@@ -277,7 +288,7 @@ async def handle_find_nearcade_id(bot: Bot, event: GroupMessageEvent) -> None:
     if match:
         keyword = match.group(1)
         result = await search_nearcade_shops(keyword)
-        
+
         if not result or not result['shops']:
             await find_nearcade_id_matcher.finish(_reply_text(event, "未在 Nearcade 上找到匹配的机厅。"))
             return
@@ -287,7 +298,8 @@ async def handle_find_nearcade_id(bot: Bot, event: GroupMessageEvent) -> None:
             shop_id = shop.get('id', '未知ID')
             name = shop.get('name', '未知名称')
             address = shop.get('address', '未知地址')
-            lines.append(f"机厅名: {name}\n地址: {address}\nID: {shop_id}\n--------------------")
+            lines.append(
+                f"机厅名: {name}\n地址: {address}\nID: {shop_id}\n--------------------")
 
         response_text = "\n".join(lines)
         img = text_to_image(response_text)
@@ -296,7 +308,9 @@ async def handle_find_nearcade_id(bot: Bot, event: GroupMessageEvent) -> None:
 
 
 # 绑定机厅id命令
-bind_nearcade_id_matcher = on_regex(BIND_NEARCAADE_ID_PATTERN, priority=10, block=True)
+bind_nearcade_id_matcher = on_regex(
+    BIND_NEARCAADE_ID_PATTERN, priority=10, block=True)
+
 
 @bind_nearcade_id_matcher.handle()
 async def handle_bind_nearcade_id(bot: Bot, event: GroupMessageEvent) -> None:
@@ -304,7 +318,7 @@ async def handle_bind_nearcade_id(bot: Bot, event: GroupMessageEvent) -> None:
     if not _is_admin(event):
         await bind_nearcade_id_matcher.finish(_reply_text(event, "权限不足：仅群管理员可绑定机厅ID"))
         return
-    
+
     text = str(event.get_message()).strip()
     match = re.match(BIND_NEARCAADE_ID_PATTERN, text)
     if match:
@@ -315,6 +329,7 @@ async def handle_bind_nearcade_id(bot: Bot, event: GroupMessageEvent) -> None:
 
 # 查询单个机厅人数命令
 single_query_matcher = on_regex(SINGLE_QUERY_PATTERN, priority=10, block=True)
+
 
 @single_query_matcher.handle()
 async def handle_single_query(bot: Bot, event: GroupMessageEvent) -> None:
@@ -330,7 +345,9 @@ async def handle_single_query(bot: Bot, event: GroupMessageEvent) -> None:
 
 
 # 查询历史记录和地址命令
-history_location_matcher = on_regex(HISTORY_LOCATION_PATTERN, priority=10, block=True)
+history_location_matcher = on_regex(
+    HISTORY_LOCATION_PATTERN, priority=10, block=True)
+
 
 @history_location_matcher.handle()
 async def handle_history_location(bot: Bot, event: GroupMessageEvent) -> None:
@@ -351,6 +368,7 @@ async def handle_history_location(bot: Bot, event: GroupMessageEvent) -> None:
 # 减少指定数量命令
 subtract_matcher = on_regex(SUBTRACT_PATTERN, priority=10, block=True)
 
+
 @subtract_matcher.handle()
 async def handle_subtract(bot: Bot, event: GroupMessageEvent) -> None:
     """处理减少指定数量命令"""
@@ -368,6 +386,7 @@ async def handle_subtract(bot: Bot, event: GroupMessageEvent) -> None:
 
 # 增加指定数量命令
 add_matcher = on_regex(ADD_PATTERN, priority=10, block=True)
+
 
 @add_matcher.handle()
 async def handle_add(bot: Bot, event: GroupMessageEvent) -> None:
@@ -387,6 +406,7 @@ async def handle_add(bot: Bot, event: GroupMessageEvent) -> None:
 # 增加 1 命令
 increment_matcher = on_regex(INCREMENT_PATTERN, priority=10, block=True)
 
+
 @increment_matcher.handle()
 async def handle_increment(bot: Bot, event: GroupMessageEvent) -> None:
     """处理增加 1 命令"""
@@ -403,6 +423,7 @@ async def handle_increment(bot: Bot, event: GroupMessageEvent) -> None:
 
 # 减少 1 命令
 decrement_matcher = on_regex(DECREMENT_PATTERN, priority=10, block=True)
+
 
 @decrement_matcher.handle()
 async def handle_decrement(bot: Bot, event: GroupMessageEvent) -> None:
@@ -421,6 +442,7 @@ async def handle_decrement(bot: Bot, event: GroupMessageEvent) -> None:
 # 设置为指定值 (=) 命令
 set_equal_matcher = on_regex(SET_EQUAL_PATTERN, priority=10, block=True)
 
+
 @set_equal_matcher.handle()
 async def handle_set_equal(bot: Bot, event: GroupMessageEvent) -> None:
     """处理设置为指定值 (=) 命令"""
@@ -431,13 +453,14 @@ async def handle_set_equal(bot: Bot, event: GroupMessageEvent) -> None:
     if match:
         place, number_text = match.groups()
         number = int(number_text)
-        response = await _set_single_count(place, number, user_name, group_id)
+        response = await _set_single_count(place.strip(), number, user_name, group_id)
         if response:
             await set_equal_matcher.finish(_reply_text(event, response))
 
 
 # 设置为指定值 (直接数字) 命令
 set_direct_matcher = on_regex(SET_DIRECT_PATTERN, priority=10, block=True)
+
 
 @set_direct_matcher.handle()
 async def handle_set_direct(bot: Bot, event: GroupMessageEvent) -> None:
@@ -449,6 +472,6 @@ async def handle_set_direct(bot: Bot, event: GroupMessageEvent) -> None:
     if match:
         place, number_text = match.groups()
         number = int(number_text)
-        response = await _set_single_count(place, number, user_name, group_id)
+        response = await _set_single_count(place.strip(), number, user_name, group_id)
         if response:
             await set_direct_matcher.finish(_reply_text(event, response))

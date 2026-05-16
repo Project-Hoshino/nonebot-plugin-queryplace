@@ -2,7 +2,6 @@ from nonebot.log import logger
 import json
 import aiohttp
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .config import (
@@ -16,7 +15,7 @@ from .config import (
 
 class ArcadeData:
     """机厅数据管理类"""
-    
+
     def __init__(self):
         self.arcades: List[Dict[str, Any]] = []
         self.last_update = None
@@ -63,7 +62,7 @@ class ArcadeData:
                 ]
             }
         }
-        
+
         try:
             with safe_file_write(LOCAL_ARCADE_FILE) as f:
                 json.dump(template_data, f, ensure_ascii=False, indent=2)
@@ -89,18 +88,19 @@ class ArcadeData:
                 logger.info("2. 修改模板中的示例数据为您实际的机厅信息")
                 logger.info("3. 保存文件后重启机器人")
                 logger.info("="*50 + "\n")
-            
+
             self.current_file = LOCAL_ARCADE_FILE
         else:
             self.current_file = ARCADE_DATA_FILE
-            
+
         if self.current_file.exists():
             try:
                 with self.current_file.open("r", encoding="utf-8") as f:
                     data = json.load(f)
                     # 确保数据格式正确
-                    raw_arcades = data.get("arcades", []) if isinstance(data, dict) else []
-                    
+                    raw_arcades = data.get(
+                        "arcades", []) if isinstance(data, dict) else []
+
                     # 验证数据结构，确保每个项目都是字典
                     validated_arcades = []
                     for item in raw_arcades:
@@ -122,9 +122,10 @@ class ArcadeData:
                             validated_arcades.append(item)
                         else:
                             logger.warning(f"警告：发现无效的机厅数据项，跳过：{item}")
-                    
+
                     self.arcades = validated_arcades
-                    self.last_update = data.get("last_update") if isinstance(data, dict) else None
+                    self.last_update = data.get(
+                        "last_update") if isinstance(data, dict) else None
             except Exception as e:
                 logger.error(f"加载机厅数据失败：{e}")
                 self.arcades = []
@@ -138,10 +139,11 @@ class ArcadeData:
                 try:
                     with LOCAL_ARCADE_FILE.open("r", encoding="utf-8") as f:
                         data = json.load(f)
-                    
+
                     # 正确解析本地数据结构，只处理 arcades 数组
-                    raw_arcades = data.get("arcades", []) if isinstance(data, dict) else []
-                    
+                    raw_arcades = data.get(
+                        "arcades", []) if isinstance(data, dict) else []
+
                     # 验证数据结构，确保每个项目都是字典
                     validated_local_data = []
                     for item in raw_arcades:
@@ -163,9 +165,10 @@ class ArcadeData:
                             validated_local_data.append(item)
                         else:
                             logger.warning(f"警告：发现无效的本地机厅数据项，跳过：{item}")
-                    
+
                     self.arcades = validated_local_data
-                    self.last_update = data.get("last_update") if isinstance(data, dict) else datetime.now().isoformat()
+                    self.last_update = data.get("last_update") if isinstance(
+                        data, dict) else datetime.now().isoformat()
                     # 确保使用本地文件
                     self.current_file = LOCAL_ARCADE_FILE
                     self._save_arcades()
@@ -194,8 +197,10 @@ class ArcadeData:
                         chunidata = None
 
             if maidata or chunidata:
-                maidata_dict = {arc['id']: arc for arc in maidata} if maidata else {}
-                chunidata_dict = {arc['id']: arc for arc in chunidata} if chunidata else {}
+                maidata_dict = {
+                    arc['id']: arc for arc in maidata} if maidata else {}
+                chunidata_dict = {
+                    arc['id']: arc for arc in chunidata} if chunidata else {}
 
                 arcades = []
                 for _arc in maidata or []:
@@ -236,7 +241,7 @@ class ArcadeData:
                         validated_arcades.append(item)
                     else:
                         logger.warning(f"警告：发现无效的机厅数据项，跳过：{item}")
-                
+
                 self.arcades = validated_arcades
                 self.last_update = datetime.now().isoformat()
                 # 确保使用在线数据文件
@@ -274,7 +279,7 @@ class ArcadeData:
                             return arcade, arcade['name']
                         if name_or_alias in arcade.get('alias', []):
                             return arcade, name_or_alias
-        
+
         # 如果没有提供 group_id，或者在订阅的机厅中没找到，则在所有机厅中查找
         for arcade in self.arcades:
             if isinstance(arcade, dict):
@@ -282,7 +287,7 @@ class ArcadeData:
                     return arcade, arcade['name']
                 if name_or_alias in arcade.get('alias', []):
                     return arcade, name_or_alias
-        
+
         return None, name_or_alias
 
     def find_arcade(self, name_or_alias: str, group_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
@@ -335,7 +340,7 @@ class ArcadeData:
                 arcade['by'] = ''     # 清空用户名
         self._save_arcades()
         logger.info("每日数据重置完成")
-        
+
         # 更新最后重置时间记录
         try:
             with open(self.last_reset_time_file, 'w', encoding='utf-8') as f:
@@ -362,7 +367,7 @@ class ArcadeData:
             if isinstance(arcade, dict) and arcade.get('time'):
                 try:
                     time_obj = datetime.fromisoformat(arcade['time'])
-                    
+
                     # 计算数据所属的游戏日
                     if time_obj.hour < 4:
                         data_game_day = (time_obj - timedelta(days=1)).date()
@@ -376,35 +381,37 @@ class ArcadeData:
 
                 except (ValueError, TypeError):
                     # 时间格式错误或类型不匹配，可以记录日志或忽略
-                    logger.warning(f"机厅 '{arcade.get('name', '未知')}' 的时间格式无效，跳过检查。")
+                    logger.warning(
+                        f"机厅 '{arcade.get('name', '未知')}' 的时间格式无效，跳过检查。")
                     continue
 
         if should_reset:
             logger.info("检测到存在旧的游戏日数据，将执行每日数据重置。")
             self.reset_daily_data()
             return True
-        
+
         logger.info("所有数据均为当前游戏日，无需重置。")
         return False
-    
+
     def add_arcade(self, arcade_dict: Dict[str, Any]):
         """添加机厅"""
         # 生成唯一 ID
         existing_ids = [arc.get('id', '') for arc in self.arcades]
         if existing_ids:
             # 找到最大的数字 ID
-            numeric_ids = [int(id_val) for id_val in existing_ids if id_val.isdigit()]
+            numeric_ids = [int(id_val)
+                           for id_val in existing_ids if id_val.isdigit()]
             if numeric_ids:
                 next_id = max(numeric_ids) + 1
             else:
                 next_id = 10000
         else:
             next_id = 10000
-        
+
         arcade_dict['id'] = str(next_id)
         self.arcades.append(arcade_dict)
         self._save_arcades()
-    
+
     def search_fullname(self, name: str) -> List[Dict[str, Any]]:
         """搜索机厅全名，返回所有匹配项"""
         results = []
@@ -424,7 +431,7 @@ class ArcadeData:
                 self._save_arcades()
                 return True
         return False
-    
+
     def update_arcade(self, name: str, mainum: int = None, chuninum: int = None) -> bool:
         """更新机厅信息"""
         for arcade in self.arcades:

@@ -3,11 +3,10 @@
 """
 from __future__ import annotations
 
-import json
 import threading
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from contextlib import contextmanager
 
 from PIL import Image, ImageDraw, ImageFont
@@ -19,7 +18,8 @@ from nonebot import get_driver
 driver = get_driver()
 plugin_config = driver.config
 
-NEARCADE_TOKEN = getattr(plugin_config, "nearcade_token", "nk_eimMHQaX7F6g0LlLg6ihhweRQTyLxUTVKHuIdijadC") or "nk_eimMHQaX7F6g0LlLg6ihhweRQTyLxUTVKHuIdijadC"
+NEARCADE_TOKEN = getattr(plugin_config, "nearcade_token",
+                         "nk_eimMHQaX7F6g0LlLg6ihhweRQTyLxUTVKHuIdijadC") or "nk_eimMHQaX7F6g0LlLg6ihhweRQTyLxUTVKHuIdijadC"
 
 MACHINE_CALC_MODE = getattr(plugin_config, "machine_calc_mode", "all") or "all"
 
@@ -37,7 +37,8 @@ def _parse_bool(value: Any, default: bool = True) -> bool:
     return default
 
 
-USE_ONLINE_DATABASE = _parse_bool(getattr(plugin_config, "use_online_database", True), True)
+USE_ONLINE_DATABASE = _parse_bool(
+    getattr(plugin_config, "use_online_database", True), True)
 
 # 数据目录配置
 BOT_DATA_DIR = Path.cwd() / "data" / "nonebot_plugin_queryplace"
@@ -80,7 +81,8 @@ def text_to_image(text: str, font_size: int = 20) -> Image.Image:
     im = Image.new('RGB', (wa, ha), color=(255, 255, 255))
     draw = ImageDraw.Draw(im)
     for index, line in enumerate(lines):
-        draw.text((padding, padding + index * (margin + b)), line, font=font, fill=(0, 0, 0))
+        draw.text((padding, padding + index * (margin + b)),
+                  line, font=font, fill=(0, 0, 0))
     return im
 
 
@@ -96,10 +98,11 @@ def image_to_base64(img: Image.Image, format='PNG') -> str:
 # 文件锁管理器
 class FileLockManager:
     """文件锁管理器，防止并发写入导致文件损坏"""
+
     def __init__(self):
         self.locks = {}
         self.global_lock = threading.Lock()
-    
+
     def get_lock(self, file_path: str):
         with self.global_lock:
             if file_path not in self.locks:
@@ -142,19 +145,19 @@ def _is_same_day(timestamp: str) -> bool:
     try:
         last_updated = datetime.fromisoformat(timestamp)
         now = datetime.now()
-        
+
         # 获取当前游戏日（基于 4 点为界的日期）
         if now.hour >= 4:
             current_game_day = now.date()
         else:
             current_game_day = (now - timedelta(days=1)).date()
-        
+
         # 获取更新时间所属的游戏日
         if last_updated.hour >= 4:
             update_game_day = last_updated.date()
         else:
             update_game_day = (last_updated - timedelta(days=1)).date()
-        
+
         return current_game_day == update_game_day
     except Exception:
         return False

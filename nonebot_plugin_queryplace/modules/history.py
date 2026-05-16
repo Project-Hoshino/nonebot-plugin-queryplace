@@ -16,7 +16,7 @@ from .config import (
 
 class HistoryData:
     """历史记录数据管理类"""
-    
+
     def __init__(self):
         self.history: Dict[str, List[Dict[str, Any]]] = {}
         self.last_reset_date = None
@@ -48,18 +48,18 @@ class HistoryData:
         except Exception as e:
             print(f"保存历史数据失败：{e}")
 
-    def add_record(self, arcade_name: str, action: str, user: str, 
+    def add_record(self, arcade_name: str, action: str, user: str,
                    count: int = None, old_count: int = None, new_count: int = None):
         """添加历史记录"""
         today_str = _get_current_day_key()  # 使用统一的日期键
         if today_str not in self.history:
             self.history[today_str] = {}
-        
+
         if arcade_name not in self.history[today_str]:
             self.history[today_str][arcade_name] = []
-        
+
         timestamp = datetime.now().strftime("%H:%M:%S")
-        
+
         record = {
             "time": timestamp,
             "user": user,
@@ -68,7 +68,7 @@ class HistoryData:
             "old_count": old_count,
             "new_count": new_count
         }
-        
+
         self.history[today_str][arcade_name].append(record)
         self.save_history()
 
