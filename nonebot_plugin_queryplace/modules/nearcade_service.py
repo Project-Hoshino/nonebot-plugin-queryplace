@@ -35,7 +35,8 @@ async def search_nearcade_shops(keyword: str, page: int = 1, limit: int = 5) -> 
         
         headers = {
             'User-Agent': 'Mozilla/5.0 (compatible; NoneBot-QueryPlace-Plugin)',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
         }
         
         async with httpx.AsyncClient() as client:
@@ -69,7 +70,8 @@ async def update_nearcade_attendance(shop_id: str, count: int) -> bool:
     headers = {
         'Authorization': f'Bearer {NEARCADE_TOKEN}',
         'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; NoneBot-QueryPlace-Plugin)'
+        'User-Agent': 'Mozilla/5.0 (compatible; NoneBot-QueryPlace-Plugin)',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
     }
 
     try:
@@ -126,7 +128,8 @@ async def get_nearcade_attendance(shop_id: str) -> Dict[str, Any] | None:
     url = f"https://nearcade.cn/api/shops/bemanicn/{shop_id}/attendance"
     headers = {
         'User-Agent': 'Mozilla/5.0 (compatible; NoneBot-QueryPlace-Plugin)',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
     }
 
     try:
